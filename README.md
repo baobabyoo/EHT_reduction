@@ -2,6 +2,22 @@
 
 This project keeps shared analysis tools alongside local observations. Open the project root in Codex so a new chat can find both. To share the workflow on GitHub, include this README, AGENTS.md, `tools/` and `Codex_skills/`. Each analyzer supplies their observation data locally.
 
+## Reduction workflow
+
+For each track and band, PolConvert converts the polarization basis of the correlated data, then rPICARD calibrates the visibilities. Codex assesses the products and proposes flags. A human reviews the conversion, calibration, and visibility selections. Before imaging, apply and verify any agreed flags on the intended measurement set and record the dataset used. The final QA report combines the stage findings with the accepted image, restoring beam, and residual RMS. See the [full reduction workflow](tools/instructions/Markdowns/Overall_workflow.md).
+
+```mermaid
+flowchart TD
+    P["PolConvert and human review"] -->|Accepted| R["rPICARD calibration"]
+    R --> V["Review solutions and visibility flags"]
+    V -->|Flags warrant recalibration| R
+    V -->|Dataset accepted| I["Image and inspect residuals"]
+    I -->|Adjust imaging settings| I
+    I -->|Calibration issue| R
+    I -->|Conversion issue| P
+    I -->|Image accepted| Q["Final QA report"]
+```
+
 ## Directory structure
 
 | Path | Purpose |
