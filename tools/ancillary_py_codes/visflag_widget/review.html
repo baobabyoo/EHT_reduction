@@ -20,6 +20,7 @@ main{max-width:1760px}
 @media(max-width:800px){.workspace{grid-template-columns:minmax(0,1fr)}.approved-pane{position:static;max-height:45vh}}
 </style></head><body><main>
 <header><h1>Visibility flag review</h1><strong id="progress"></strong></header>
+<div id="scanSource" class="subtle"></div>
 <details><summary>Data and output files</summary><div id="paths" class="subtle"></div></details>
 <div class="workspace"><div class="review-body"><section><div class="row">
 <label>Scan <select id="scan"></select></label><label>Baseline <select id="pair"></select></label>
@@ -147,6 +148,7 @@ function display(s,replace=true){
  S=s;showApproved(s.approved_commands,s.done);revision++;geom=[];$('chart').removeAttribute('src');clearZoom();view(false);$('error').textContent='';
  opts('scan',s.scans,s.scan);opts('pair',s.pairs,s.pair);$('scan').disabled=s.pdf;
  $('iterLabel').hidden=s.pdf;$('prev').hidden=$('next').hidden=s.pdf; $('prev').disabled=!s.previous;$('next').disabled=!s.following;
+ $('scanSource').textContent='Scan IDs: '+s.scan_source;
  $('paths').textContent=[s.source,s.report,s.out].filter(Boolean).join('  •  ');
  $('progress').textContent=s.pdf?(s.done?'Review complete':('Command '+(s.index+1)+' / '+s.total)):'Manual review';
  $('plotTitle').textContent=s.field+'  /  Scan '+s.scan+'  /  '+s.pair.replace('&','–')+(s.pdf?'':'  ·  Baseline '+(s.pairs.indexOf(s.pair)+1)+' of '+s.pairs.length);

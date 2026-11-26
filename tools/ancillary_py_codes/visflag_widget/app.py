@@ -33,10 +33,6 @@ class Review:
     def __init__(self, args):
         path = Path(args.vis).resolve()
         log = args.scan_log
-        if path.is_file() and not log:
-            logs = sorted(path.parent.glob("diagnostics_*/list.obs"))
-            if logs:
-                log = logs[-1]
         self.primary = Visibility(path, log, args.scan_gap, args.casa_python, args.field)
         self.queue = pdf_commands(args.pdf) if args.pdf else []
         ascii_path = getattr(args, "commands", None)
@@ -57,8 +53,7 @@ class Review:
         clock = self.primary
         if args.pdf and path.is_dir() and path.with_suffix(".uvf").is_file():
             sibling = path.with_suffix(".uvf")
-            logs = sorted(path.parent.glob("diagnostics_*/list.obs"))
-            clock = Visibility(sibling, log or (logs[-1] if logs else None), args.scan_gap)
+            clock = Visibility(sibling, log, args.scan_gap)
         spans = {}
         if self.queue and not clock.is_ms:
             for scan in np.unique(clock.scans):
@@ -66,6 +61,17 @@ class Review:
                 spans[int(scan)] = (times.min() - 0.00005, times.max() + 0.00005)
         for item in self.queue:
             k = item["k"]
+            if clock.local_scans and (k.get("scan") or (args.pdf and not k.get("timerange"))):
+                raise ValueError("Local time-gap labels cannot identify original scans. Supply --scan-log for this review.")
+            if clock.local_scans and args.pdf:
+                ranges = intervals(k["timerange"])
+                matches = [scan for scan, (lo, hi) in spans.items()
+                           if any(start <= hi and end >= lo for start, end in ranges)]
+                if len(matches) != 1:
+                    raise ValueError("Cannot identify a unique scan from report UTC. Supply --scan-log.")
+                item["scan"] = matches[0]
+            if args.pdf and not clock.is_ms and k.get("scan") and int(k["scan"]) != item["scan"]:
+                raise ValueError("PDF scan label and flag command disagree")
             if ascii_path:
                 if k["vis"] not in self.targets and Path(k["vis"]).resolve() != Path(self.primary.target):
                     raise ValueError(f"Line {item['line']}: vis does not match {self.primary.target}")
@@ -95,6 +101,8 @@ class Review:
             k["vis"] = self.primary.target
             if k.get("scan") and item["scan"] in spans:
                 lo, hi = spans[item["scan"]]
+                if np.any((clock.time >= lo) & (clock.time <= hi) & (clock.scans != item["scan"])):
+                    raise ValueError("Scan overlaps another scan in UTC; review on the target MS")
                 ranges = intervals(k["timerange"]) if k.get("timerange") else [(lo, hi)]
                 pieces = [
                     utc(max(lo, start)) + "~" + utc(min(hi, end))
@@ -128,9 +136,11 @@ class Review:
             field=self.primary.field,
             pdf=hashlib.sha256(Path(args.pdf).read_bytes()).hexdigest() if args.pdf else "",
             native=str(Path(args.native_ms).resolve()) if args.native_ms else "",
-            scanlog=str(log or ""),
+            scanlog=str(clock.scan_log or log or ""),
             gap=args.scan_gap,
         )
+        if clock.scan_source.startswith("UVFITS "):
+            key["embedded_scans"] = hashlib.sha256(clock.scans.tobytes()).hexdigest()
         if ascii_path:
             key["commands"] = hashlib.sha256(Path(ascii_path).read_bytes()).hexdigest()
         output = Path(args.output)
@@ -195,7 +205,7 @@ class Review:
             scan = item["scan"]
         elif scan is None and self.steps:
             scan = self.steps[-1].get("nextScan")
-        scan = int(scan or scans[0])
+        scan = int(scans[0] if scan is None else scan)
         if scan not in scans:
             raise ValueError(f"Scan {scan} unavailable. Supply matching scan IDs / --scan-log.")
         pairs = ds.baselines(scan)
@@ -247,6 +257,7 @@ class Review:
             pdf=bool(self.queue),
             scan=scan,
             scans=scans,
+            scan_source=ds.scan_source,
             pair=pair,
             pairs=pairs,
             context=target not in self.targets,
@@ -263,6 +274,7 @@ class Review:
             reference=bool(
                 item
                 and item["diagnostic"]
+                and not ds.local_scans
                 and self.references
                 and (self.references / f"scan{item['source_scan']}.npz").is_file()
             ),

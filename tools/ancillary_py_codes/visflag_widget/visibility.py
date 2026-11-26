@@ -12,11 +12,59 @@ HANDS = ["RR", "LL", "RL", "LR"]
 COLORS = dict(RR="#EE2C2C", RL="#2E8B57", LR="#0000FF", LL="#314F4F")
 
 
+def embedded_scans(hdus):
+    """Read explicit scan identifiers, never infer their values from index row order."""
+    groups = hdus[0].data
+    result = None
+    sources = []
+
+    def integers(values, label):
+        a = np.asarray(values)
+        if (a.ndim != 1 or a.dtype.kind not in "iuf" or
+                not np.all(np.isfinite(a) & (a >= 0) & (a < 2**63) & (a == np.floor(a)))):
+            raise ValueError(f"Invalid UVFITS {label}")
+        return a.astype(np.int64)
+
+    def accept(values, label):
+        nonlocal result
+        if result is not None and not np.array_equal(result, values):
+            raise ValueError("Conflicting scan identifiers inside UVFITS")
+        result = values
+        sources.append(label)
+
+    def scan_names(names):
+        return [n for n in names if re.sub(r"[ _-]", "", n.upper()) in ("SCAN", "SCANNUMBER", "SCANID")]
+
+    for name in scan_names(groups.parnames):
+        if groups.parnames.count(name) != 1:
+            raise ValueError(f"Duplicate UVFITS group parameter {name}")
+        accept(integers(groups.par(name), name), name)
+    for hdu in hdus[1:]:
+        if hdu.name.strip().upper() != "AIPS NX":
+            continue
+        for name in scan_names(hdu.columns.names):
+            rows = hdu.data
+            first = integers(rows["START VIS"], "NX START VIS")
+            last = integers(rows["END VIS"], "NX END VIS")
+            ids = np.full(len(groups), -1, dtype=np.int64)
+            for a, b, scan in zip(first, last, integers(rows[name], name)):
+                if not 1 <= a <= b <= len(ids) or (ids[a-1:b] >= 0).any():
+                    raise ValueError("Invalid or overlapping AIPS NX visibility ranges")
+                ids[a-1:b] = scan
+            if (ids < 0).any():
+                raise ValueError("Incomplete AIPS NX scan coverage")
+            accept(ids, f"AIPS NX {name}")
+    return result, " + ".join(sources)
+
+
 class Visibility:
     def __init__(self, path, log=None, gap=60, casa=None, field=None):
         self.path = Path(path).resolve()
         self.is_ms = self.path.is_dir()
         self.casa = casa
+        self.scan_source = "MS SCAN_NUMBER"
+        self.local_scans = False
+        self.scan_log = None
         self.target = str(self.path) if self.is_ms else str(self.path.with_suffix(".ms"))
         if self.is_ms:
             meta = self.ms_read("index", field or "")
@@ -51,25 +99,31 @@ class Visibility:
             return "" if a == b else stations[a] + "&" + stations[b]
 
         self.pairs = np.array([pair(c) for c in np.unique(code)])[np.unique(code, return_inverse=True)[1]]
-        self.scans = np.full(len(code), -1)
-        if log:
-            day = h.header["DATE-OBS"][:10]
-            pat = (
-                r"(\d\d:\d\d:\d\d\.\d+)\s+-\s+(\d\d:\d\d:\d\d\.\d+)\s+(\d+)\s+\d+\s+"
-                + re.escape(self.field)
-                + r"\s"
-            )
-            for a, b, s in re.findall(pat, Path(log).read_text()):
-                t = Time([day + "T" + a, day + "T" + b]).unix
-                use = (self.time >= t[0] - 0.00005) & (self.time <= t[1] + 0.010)
-                if (self.scans[use] != -1).any():
-                    raise ValueError("Overlapping scan intervals")
-                self.scans[use] = int(s)
-            if (self.scans < 0).any():
-                raise ValueError("Observing log does not cover this export")
+        self.scans, embedded = embedded_scans(self.fits)
+        if self.scans is not None:
+            self.scan_source = "UVFITS " + embedded
         else:
-            times = np.unique(self.time)
-            self.scans = np.searchsorted(times[1:][np.diff(times) > gap], self.time, side="right") + 1
+            candidates = [Path(log)] if log else sorted(self.path.parent.glob("diagnostics_*/list.obs"))
+            for candidate in candidates:
+                try:
+                    ids = self._log_scans(h.header, candidate)
+                except ValueError:
+                    if log or len(candidates) == 1:
+                        raise
+                    continue
+                if self.scans is not None and not np.array_equal(self.scans, ids):
+                    raise ValueError("Observing logs assign different scans. Specify the matching --scan-log.")
+                self.scans = ids
+                self.scan_log = candidate
+            if self.scan_log:
+                self.scan_source = str(self.scan_log)
+            elif candidates:
+                raise ValueError("No observing log covers this UVFITS export. Supply the matching --scan-log.")
+            else:
+                times = np.unique(self.time)
+                self.scans = np.searchsorted(times[1:][np.diff(times) > gap], self.time, side="right") + 1
+                self.local_scans = True
+                self.scan_source = f"Local time-gap labels ({gap:g} s); original scan IDs unavailable"
         hdr = h.header
         codes = hdr["CRVAL3"] + (1 + np.arange(hdr["NAXIS3"]) - hdr["CRPIX3"]) * hdr["CDELT3"]
         self.order = [(i, int(-c - 1)) for i, c in enumerate(codes) if c in (-1, -2, -3, -4)]
@@ -94,6 +148,24 @@ class Visibility:
         ).ravel()
         self.spw = np.repeat(np.arange(len(offsets)), len(channels))
         self.chan = np.tile(channels, len(offsets))
+
+    def _log_scans(self, header, candidate):
+        ids = np.full(len(self.time), -1)
+        day = header["DATE-OBS"][:10]
+        pat = (
+            r"(\d\d:\d\d:\d\d\.\d+)\s+-\s+(\d\d:\d\d:\d\d\.\d+)\s+(\d+)\s+\d+\s+"
+            + re.escape(self.field)
+            + r"\s"
+        )
+        for a, b, s in re.findall(pat, Path(candidate).read_text()):
+            t = Time([day + "T" + a, day + "T" + b]).unix
+            use = (self.time >= t[0] - 0.00005) & (self.time <= t[1] + 0.010)
+            if (ids[use] != -1).any():
+                raise ValueError("Overlapping scan intervals")
+            ids[use] = int(s)
+        if (ids < 0).any():
+            raise ValueError("Observing log does not cover this export")
+        return ids
 
     def ms_read(self, *args):
         if not self.casa:
