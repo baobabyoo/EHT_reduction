@@ -1,0 +1,5 @@
+./data/rpicard/e26m17_example/
+./data/Polconv_2026/
+.DS_Store
+__pycache__/
+*.pyc
