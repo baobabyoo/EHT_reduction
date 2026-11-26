@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fringe solution review</title>
+<style>
+*{box-sizing:border-box}body{background:#f4f6f5;color:#203438;font:15px system-ui;margin:1.5rem auto;padding:0 1rem;max-width:1450px}h1{font-size:1.65rem}h2{font-size:1.1rem}section,aside{background:white;padding:1rem;border:1px solid #c7d1d1;border-radius:8px;margin:.7rem 0}.workspace{display:grid;grid-template-columns:minmax(0,1fr) 255px;gap:1rem}.bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.5rem 0}button,select,input,textarea{font:inherit}button,select{padding:.3rem .6rem}button{cursor:pointer}textarea{width:100%;min-height:5em}svg{width:100%;display:block}aside{max-height:75vh;overflow:auto}aside label{display:block;padding:.35rem}#status{color:#8d3200;min-height:1.4em}#paths{overflow-wrap:anywhere}svg text{font:13px system-ui;fill:#263638}.rr{color:#0072b2}.ll{color:#a65b00}@media(max-width:800px){.workspace{grid-template-columns:1fr}}
+</style><h1>Fringe solution review</h1><p id="progress" role="status"></p><details><summary>Table and output file</summary><p id="paths"></p></details>
+<div class="workspace"><main><section>
+<div class="bar"><button id="pa" aria-label="Previous antenna">◀</button><label>Antenna <select id="ant"></select></label><button id="na" aria-label="Next antenna">▶</button>
+<button id="ps" aria-label="Previous scan">◀</button><label><span id="scanLabel">Form scan</span> <select id="scan"></select></label><button id="ns" aria-label="Next scan">▶</button><b id="src"></b></div>
+<div class="bar"><label class="rr"><input id="R" type="checkbox" checked>R ●</label><label class="ll"><input id="L" type="checkbox" checked>L +</label>
+<label>Symbol size <input id="size" type="range" min="2" max="9" value="4"></label>
+<button id="viewMode">Delay and phase</button><button id="pick">Pick outliers</button><button id="zoom">Zoom range</button><button id="reset">Zoom out</button><button id="after">Show after flagging</button></div>
+<svg id="plot" viewBox="0 0 920 460" role="img" aria-label="Delay and phase against frequency"></svg>
+</section><section><div class="bar"><label>SPW <select id="spw"></select></label><label>Hand <select id="hand"><option>R</option><option>L</option></select></label><label>Parameter <select id="par"><option>delay</option><option>phase</option></select></label><button id="add">Add flag selection</button></div>
+<label>CASA solution commands<textarea spellcheck="false" id="cmd"></textarea></label><label>Reason<textarea id="reason"></textarea></label>
+<div class="bar"><button id="approve">Approve</button><button id="skip">Skip scan</button><button id="exit">Skip remaining and exit</button></div><div id="status" role="status"></div></section></main>
+<aside><h2>Approved commands</h2><small>Checked selections are excluded from the plots.</small><div id="approved"></div></aside></div>
+<script src="calibration_queue.js"></script><script>
+const $=id=>document.getElementById(id), svg=$('plot'), ns='http://www.w3.org/2000/svg';
+let groups=[],points=[],approved=[],disabled=new Set(),pending=new Set(),picks=new Set(),mode='',after=false,bounds=null,start=null,version=0,loadId=0;
+let scanData=null, delayOnly=true;
+const id=k=>JSON.stringify(k);
+async function api(action,body={}) {
+ const res=await fetch(action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const x=await res.json();if(!res.ok)throw Error(x.error||res.statusText);return x;
+}
+window.onunhandledrejection=e=>{$('status').textContent=e.reason.message};
+function options(el,vals,preferred){el.replaceChildren(...vals.map(v=>new Option(v,v)));if(vals.map(String).includes(String(preferred)))el.value=preferred}
+function node(name,attrs,txt){const n=document.createElementNS(ns,name);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);if(txt!==undefined)n.textContent=txt;svg.append(n);return n}
+function render(){
+ svg.replaceChildren();if(!scanData)return;
+ const hidden=new Set(approved.filter(row=>!disabled.has(row.uid)).flatMap(row=>row.keys.map(id)));
+ const visible=points.filter(p=>$(p.key[3]).checked&&!hidden.has(id(p.key))&&!(after&&pending.has(id(p.key))));
+ const excluded=p=>hidden.has(id(p.key))||(after&&pending.has(id(p.key)));
+ const flagged=delayOnly?0:scanData.flagged_delays+points.filter(p=>p.key[4]==='delay'&&excluded(p)).length;
+ const lo=bounds?.[0]??(scanData.band[0]-.02),hi=bounds?.[1]??(scanData.band[1]+.02);
+ const x=f=>75+815*(f-lo)/(hi-lo);svg.dataset.lo=lo;svg.dataset.hi=hi;
+ const panels=delayOnly?scanData.sources.map(source=>({par:'delay',source})):[{par:'delay'},{par:'phase'}];
+ const height=panels.length*212+36;
+ svg.setAttribute('viewBox','0 0 920 '+height);
+ svg.setAttribute('aria-label',delayOnly?'Delay against frequency for all scans by source':'Delay and phase against frequency');
+ panels.forEach(({par,source},j)=>{
+ const phase=par==='phase';
+ const top=22+212*j,h=168;
+ const pp=phase&&flagged>0?[]:visible.filter(p=>p.key[4]===par&&(!delayOnly||p.source===source)&&p.freq>=lo&&p.freq<=hi);
+ if(delayOnly)node('text',{x:75,y:top-6,'font-weight':'bold'},source);
+ let ymin=-180,ymax=180;if(!phase){let vals=pp.map(p=>p.value);let a=vals.length?Math.min(...vals):-1,b=vals.length?Math.max(...vals):1;let pad=(b-a)*.06||1;ymin=a-pad;ymax=b+pad}
+ const y=v=>top+h-h*(v-ymin)/(ymax-ymin);
+ node('rect',{x:75,y:top,width:815,height:h,fill:'white',stroke:'#7f989a'});
+ node('text',{x:16,y:top+h/2,transform:'rotate(-90 16 '+(top+h/2)+')','text-anchor':'middle'},phase?'Phase (deg)':'Delay (ns)');
+ for(let i=0;i<5;i++){let v=ymin+(ymax-ymin)*i/4;node('text',{x:70,y:y(v)+4,'text-anchor':'end'},Number(v.toPrecision(3)))}
+ if(!pp.length){
+   let message='No visible solutions';
+   if(!delayOnly&&!phase&&flagged===scanData.total_delays)message='delay is fully flagged';
+   if(phase&&flagged>0)message='phase shown only for scans with all delays unflagged';
+   node('text',{x:482,y:top+85,'text-anchor':'middle'},message);
+ }
+ for(const p of pp){const cx=x(p.freq),cy=y(p.value),r=+$('size').value,c=p.key[3]==='R'?'#0072b2':'#d48600';
+ if(pending.has(id(p.key))||picks.has(p.cmd))node('circle',{cx,cy,r:r+4,stroke:'#a62785',fill:'none','stroke-width':2});
+ if(p.key[3]==='R')node('circle',{cx,cy,r,fill:'none',stroke:c,'stroke-width':2});
+ else node('path',{d:'M'+(cx-r)+' '+cy+'h'+(2*r)+' M'+cx+' '+(cy-r)+'v'+(2*r),stroke:c,'stroke-width':2});
+ const hit=node('circle',{cx,cy,r:r+4,fill:'transparent'});let title=document.createElementNS(ns,'title');title.textContent=p.key.join(' / ')+' = '+p.value;hit.append(title);
+ hit.onclick=()=>{if(mode==='pick'){if(exportable(p)){picks.add(p.cmd);render()}}};
+ }
+ });for(let i=0;i<=4;i++){const f=lo+(hi-lo)*i/4;node('text',{x:x(f),y:height-35,'text-anchor':'middle'},f.toFixed(3))}
+ node('text',{x:480,y:height-9,'text-anchor':'middle'},'Frequency (GHz)');
+}
+function sidebar(){const pane=$('approved');pane.replaceChildren();for(const row of approved){
+ const label=document.createElement('label'),check=document.createElement('input');check.type='checkbox';check.checked=!disabled.has(row.uid);check.onchange=()=>{check.checked?disabled.delete(row.uid):disabled.add(row.uid);render()};label.style.overflowWrap='anywhere';label.append(check,row.line);pane.append(label)}}
+async function preview(){const v=++version;pending.clear();render();try{const r=await api('preview',{text:$('cmd').value});if(version===v){pending=new Set(r.keys.map(id));$('status').textContent='';render()}}catch(e){if(version===v)$('status').textContent=e.message}}
+function exportable(point){
+ if(point.cmd)return true;
+ $('status').textContent=point.key[3]==='L'?'CASA flagdata cannot select just L phase or L delay in this table.':'Value outside the supported clip range.';
+ return false;
+}
+function append(lines){$('cmd').value=[...new Set([...$('cmd').value.split('\n'),...lines].filter(Boolean))].join('\n');preview()}
+function setMode(m){mode=m;start=null;$('pick').textContent=m==='pick'?'Finish picking':'Pick outliers';$('zoom').textContent=m==='zoom'?'Click two frequency limits':'Zoom range'}
+async function load(){
+ const seq=++loadId;if(picks.size)append(picks);setMode('');picks.clear();bounds=null;
+ const ant=$('ant').value, scan=+$('scan').value;
+ queueDraft(ant,delayOnly?null:scan);
+ const heading=ant+(delayOnly?' · All scans':' · Scan '+scan);
+ scanData=null;points=[];render();options($('spw'),[]);$('src').textContent=heading+' · Loading…';
+ let r;
+ try{r=await api(delayOnly?'delays':'points',{ant,scan})}catch(e){if(seq===loadId){$('src').textContent=heading+' · Load failed';$('status').textContent=e.message}return}
+ if(seq!==loadId)return;
+ scanData=r;
+ points=r.points;approved=r.commands;options($('spw'),[...new Set(points.map(p=>p.key[2]))].sort((a,b)=>a-b));$('src').textContent=delayOnly?heading:heading+' · '+r.sources.join(', ');
+ for(const [s,p,n] of [['ant','pa','na'],['scan','ps','ns']]){$(p).disabled=$(s).selectedIndex===0;$(n).disabled=$(s).selectedIndex===$(s).length-1}
+ if(delayOnly){$('ps').disabled=true;$('ns').disabled=true}
+ if(queued()){$('ant').disabled=$('pa').disabled=$('na').disabled=true;$('skip').textContent='Skip command'}
+ sidebar();if(reviewQueue.entries.length)await preview();else render();
+}
+function scans(){options($('scan'),groups.filter(g=>g[0]===$('ant').value&&(!queued()||matchesScan(queueItem().scan,g[1]))).map(g=>g[1]).sort((a,b)=>a-b),$('scan').value);return load()}
+$('ant').onchange=scans;$('scan').onchange=()=>{if(!delayOnly)load()};
+function modeControls(){
+ $('viewMode').textContent=delayOnly?'Delay and phase':'Delay only';
+ $('scanLabel').textContent=delayOnly?'Form scan':'Scan';
+ $('skip').textContent=delayOnly?'Skip antenna':'Skip scan';
+ $('par').disabled=delayOnly;
+ if(delayOnly)$('par').value='delay';
+}
+$('viewMode').onclick=()=>{delayOnly=!delayOnly;modeControls();return load()};
+modeControls();
+for(const [b,s,d] of [['pa','ant',-1],['na','ant',1],['ps','scan',-1],['ns','scan',1]])$(b).onclick=()=>{$(s).selectedIndex+=d;$(s).onchange()};
+for(const k of ['size','R','L'])$(k).oninput=render;
+$('zoom').onclick=()=>{if(mode==='pick')append(picks);picks.clear();setMode(mode==='zoom'?'':'zoom')};
+svg.onclick=e=>{if(mode!=='zoom')return;let p=new DOMPoint(e.clientX,e.clientY).matrixTransform(svg.getScreenCTM().inverse());if(p.x<75||p.x>890)return;
+ let f=+svg.dataset.lo+(p.x-75)/815*(svg.dataset.hi-svg.dataset.lo);if(start===null)start=f;else if(f!==start){bounds=[Math.min(start,f),Math.max(start,f)];setMode('');render()}};
+$('reset').onclick=()=>{bounds=null;render()};
+$('pick').onclick=()=>{if(mode==='pick'){append(picks);picks.clear();setMode('')}else setMode('pick')};
+$('after').onclick=()=>{after=!after;$('after').textContent=after?'Show before flagging':'Show after flagging';render()};
+$('add').onclick=()=>{let p=points.find(p=>p.key[1]===+$('scan').value&&p.key[2]===+$('spw').value&&p.key[3]===$('hand').value&&p.key[4]===$('par').value);if(p){if(exportable(p))append([p.cmd])}else $('status').textContent='That solution has no valid value.'};
+$('cmd').oninput=preview;
+function advance(){if(delayOnly){if(!$('na').disabled)$('na').click();return}if(!$('ns').disabled)$('ns').click();else if(!$('na').disabled){$('ant').selectedIndex++;$('scan').selectedIndex=0;scans()}}
+function clearDraft(){$('cmd').value='';$('reason').value='';pending.clear();picks.clear();setMode('');version++;render()}
+$('approve').onclick=async()=>{if(mode==='pick'&&picks.size){$('status').textContent='Finish picking before approving.';return}await api('approve',{index:reviewQueue.index,text:$('cmd').value,reason:$('reason').value});clearDraft();await nextDecision()};
+async function nextDecision(){
+   if(reviewQueue.entries.length){if(!await syncReview())return;if(queued()){$('ant').value=queueItem().ant;return scans()}}
+   await load();advance()
+ }
+ $('skip').onclick=async()=>{if(queued())await api('skip',{index:reviewQueue.index});clearDraft();await nextDecision()};
+$('exit').onclick=async()=>{const r=await api('exit');document.body.textContent='Review closed. Approved commands: '+r.out};
+(async()=>{let r=await api('state');if(!await syncReview())return;groups=r.groups;$('paths').textContent=r.table+' → '+r.out;options($('ant'),[...new Set(groups.map(g=>g[0]))].sort());if(queued()){$('ant').value=queueItem().ant;delayOnly=false;modeControls()}await scans()})();
+</script></html>

@@ -1,0 +1,5 @@
+astropy>=5
+numpy>=1.22
+matplotlib>=3.5
+Flask>=2
+pypdf>=5

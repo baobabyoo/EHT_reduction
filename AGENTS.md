@@ -1,0 +1,9 @@
+# Working in EHT_reduction
+
+- Resolve paths from the checkout root. Shared programs live in `tools/ancillary_py_codes/` and maintained procedures in `tools/instructions/Markdowns/`. The distributable skill is `Codex_skills/eht-reduction/SKILL.md`.
+- Work on the observation named in the request under `data/rpicard/`. Read its `inspection/HANDOFF.md` when present and verify paths against disk. Example observations, workflow-test outputs and backups have independent histories.
+- For visibility flags, use `visflag_guide.md` for stages, filenames and reviewer roles, and `visibility_inspection_guide.md` for scientific provenance, plots and QA. Use `ff_sb_inspection.md` for delay and `all_antennas_bandpass_inspection.md` for passband.
+- Inspect UVFITS read-only. Confirm the original MS, correlation ordering, scan and SPW/channel mapping before exporting selections. Plot each channel at its measured frequency and document the source and resolution of any supplementary diagnostics.
+- For Codex visibility proposals use manual all-four-product flags, prefer antenna-based selections supported across baselines, and combine related intervals or SPWs only when the resulting CASA selection covers exactly the intended samples. Use the target MS in each individual flagdata call. Put the proposal PDF and ASCII file directly in the observation directory.
+- Human review has two widget sessions: first the proposed ASCII queue, then the approved queue with `--examine` for all data. Keep proposals, approvals and verified application distinct. Record completed work, output paths and outstanding selections in the observation handoff when pausing an analysis.
+- Maintain shared code and documentation under `tools/`. Treat historical examples as evidence of earlier runs. Check relative links, example commands and current filenames after structural changes.

@@ -1,0 +1,238 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Visibility flag review</title><style>
+[hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;background:#f5f6f5;color:#203438;font:14px "Helvetica Neue",Arial,sans-serif}main{max-width:1320px;margin:auto;padding:18px 26px}header,.row,.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}header{justify-content:space-between}h1{font-size:25px;letter-spacing:-.8px;margin:0}h2{font-size:15px;margin:0}button,select,input,textarea{font:inherit;color:inherit}button,select,input:not([type=range]),textarea{border:1px solid #b9c7c8;border-radius:5px;background:white;padding:6px 9px}button{cursor:pointer}button:disabled{opacity:.45;cursor:default}button.primary{background:#205853;color:white;border-color:#205853}label{display:inline-flex;align-items:center;gap:5px}section{margin:12px 0;background:#fff;border:1px solid #ced8d6;border-radius:8px;padding:12px}details{margin:7px 0}summary{cursor:pointer}.row+.row{margin-top:9px}.bar{justify-content:space-between}.small{width:64px}.subtle{color:#556668;font-size:12px}.prod{font-weight:600}.prod:before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;background:var(--c)}.prod[aria-pressed=false]{opacity:.4;text-decoration:line-through}.chart{display:block;width:100%;height:auto;aspect-ratio:11.6/7.5;cursor:crosshair}.stage{position:relative}.mark{position:absolute;border:2px solid #914887;border-radius:100%;width:10px;height:10px;transform:translate(-50%,-50%);pointer-events:none}.edit{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin:9px 0}.edit label{display:block;font-weight:600}.edit textarea{display:block;width:100%;margin-top:4px;font-weight:400;height:70px}.code{font:13px ui-monospace,monospace;line-height:1.4}.notice{color:#875000}.error{color:#a12b18;white-space:pre-wrap}dialog{border:1px solid #acbab9;border-radius:8px;min-width:min(500px,90vw)}dialog label{display:flex;justify-content:space-between;margin:8px 0}dialog input{width:72%}#paths{overflow-wrap:anywhere}button:focus-visible,input:focus-visible{outline:3px solid #3c8a95}@media(max-width:700px){main{padding:10px}.edit{grid-template-columns:1fr}}
+#commands{height:9em;resize:vertical}
+.picked-point{position:absolute;pointer-events:none;transform:translate(-50%,-50%);width:12px;height:12px;border:2px solid #111;border-radius:50%;box-shadow:0 0 0 1.5px #fff}
+
+main{max-width:1760px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) clamp(260px,24vw,380px);align-items:start;gap:16px}
+.review-body{min-width:0}
+.approved-pane{position:sticky;top:12px;display:flex;flex-direction:column;min-height:0;max-height:calc(100vh - 32px);margin-top:12px;border:1px solid #ced8d6;border-radius:8px;background:white;overflow:hidden}
+.approved-pane header{display:block;padding:14px 14px 8px}
+.approved-pane p{margin:6px 0;line-height:1.4}
+.approved-list{overflow-y:auto;scrollbar-gutter:stable;padding:0 6px 8px 10px}
+.antenna-group{margin:6px 0;border-radius:5px;padding:8px 9px}
+.antenna-group h3{font-size:13px;margin:0 0 5px}
+.approved-call{display:flex;align-items:flex-start;gap:7px;padding:8px 0;cursor:pointer}
+.approved-call+.approved-call{border-top:1px solid #20343826}
+.approved-call input{flex:none;margin:3px 0}
+.approved-call code{font:12px/1.45 ui-monospace,monospace;overflow-wrap:anywhere;min-width:0}
+@media(max-width:800px){.workspace{grid-template-columns:minmax(0,1fr)}.approved-pane{position:static;max-height:45vh}}
+</style></head><body><main>
+<header><h1>Visibility flag review</h1><strong id="progress"></strong></header>
+<details><summary>Data and output files</summary><div id="paths" class="subtle"></div></details>
+<div class="workspace"><div class="review-body"><section><div class="row">
+<label>Scan <select id="scan"></select></label><label>Baseline <select id="pair"></select></label>
+<label id="iterLabel"><input type="checkbox" id="iterate"> Advance after approve or skip</label>
+<button id="prev">Previous</button><button id="next">Next</button>
+<label>SPWs <input id="spw" class="small" placeholder="All"></label>
+<label>Time bin (s) <input id="seconds" type="number" value="4" min=".001" step="any" class="small"></label>
+<label>Channels/bin <input id="channels" type="number" value="1" min="1" class="small"></label>
+</div><div class="row">
+
+<span id="products"></span><label>Symbol size <input type="range" min=".5" max="9" step=".5" value="3" id="size"><output id="sz">3 pt</output></label>
+<button id="view" aria-pressed="false">Show after flagging</button>
+</div></section>
+<p id="warning" class="notice"></p><p id="error" class="error" role="alert"></p>
+<section><div class="bar"><strong id="plotTitle"></strong><span id="status" role="status"></span></div>
+<div class="subtle">Magenta circle · selected sample or fully selected average &nbsp; Amber square · partially selected average</div><div class="stage"><img id="chart" class="chart" alt="Averaged and native visibility against time and frequency"><i class="mark" id="mark" hidden></i></div>
+<div class="bar"><span id="hint" class="subtle">Zoom with two left clicks in one panel.</span><div><button id="outliers" aria-pressed="false" disabled>Pick outliers</button> <button id="pick" aria-pressed="false">Select to flag</button> <button id="back">Zoom out</button> <button id="reset">Reset view</button> <button id="add">Add flag selection…</button></div></div></section>
+<details id="diag" hidden><summary>Channel-resolved diagnostic spectrum for this command</summary><img id="spectrum" style="width:100%" alt="Scan-averaged diagnostic spectrum with candidate channels marked"></details>
+<section><div class="bar"><h2>Pending commands</h2><span id="count" class="subtle"></span></div><div id="editor" class="edit"><label>CASA flag command<textarea id="commands" class="code" rows="4" spellcheck="false" placeholder="One flagdata call per line"></textarea></label><label>Reason (saved above each command)<textarea id="reason"></textarea></label></div>
+<div class="row"><button class="primary" id="approve">Approve &amp; append</button><button id="skip">Skip</button><button id="exit">Skip all remaining &amp; exit</button><span id="saved" role="status"></span></div></section>
+</div><aside class="approved-pane" aria-labelledby="approved-title"><header><h2 id="approved-title">Approved commands</h2>
+<p class="subtle" id="approved-status" aria-live="polite"></p></header><div id="approved-list" class="approved-list" tabindex="0" aria-label="Approved commands by antenna"></div></aside></div>
+<dialog id="dialog"><h2>Add a flag selection</h2><div id="fields"></div><div class="row"><button class="primary" id="append">Append command</button><button id="cancel">Cancel</button></div></dialog>
+</main><script>
+const $=id=>document.getElementById(id);
+let S,geom=[], zoom={},history=[],corner=null,revision=0,limits=null,draft=null, busy=false;
+let after=false,timer;
+function view(value){after=value;$('view').textContent=value?'Show before flagging':'Show after flagging';$('view').setAttribute('aria-pressed',String(value))}
+const colors={RR:'#EE2C2C',RL:'#2E8B57',LR:'#0000FF',LL:'#314F4F'};
+const hands=new Set(Object.keys(colors));
+function err(e){$('error').textContent=e.message||e}
+async function api(action,q){
+ const r=await fetch(action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(q)});
+ const body=await r.json();if(!r.ok)throw Error(body.error||r.statusText);return body
+}
+function opts(id,values,current){$(id).replaceChildren(...values.map(v=>new Option(v,v)));$(id).value=current}
+function edit(text,reason){$('commands').value=text;$('reason').value=reason}
+$('commands').oninput=()=>{
+ clearTimeout(timer);revision++;geom=[];$('approve').disabled=true;
+ $('chart').style.visibility='hidden';$('status').textContent='Updating selection…';
+ timer=setTimeout(()=>plot(true),180)
+};
+let picking=false,region={};
+let outlierMode=false,pickToken=null,pickQueue=Promise.resolve(),pickIds=new Set(),frozen=[];
+function appendCalls(calls){
+ if(!calls.length)return;
+ const box=$('commands'), old=box.value;
+ const prefix=(S.blank&&old===S.command)||!old.trim()?'':old+(old.endsWith('\n')?'':'\n');
+ box.value=prefix+calls.join('\n');box.scrollTop=box.scrollHeight;
+}
+function endOutlierMode(){
+ outlierMode=false;pickToken=null;
+ for(const [control,wasDisabled] of frozen)control.disabled=wasDisabled;
+ frozen=[];pickIds.clear();document.querySelectorAll('.picked-point').forEach(m=>m.remove());
+ $('outliers').textContent='Pick outliers';$('outliers').setAttribute('aria-pressed','false');
+ selectionMode(false)
+}
+$('outliers').onclick=async()=>{
+ const button=$('outliers');button.disabled=true;
+ if(!outlierMode){
+  selectionMode(false);outlierMode=true;
+  button.textContent='Finish picking';button.setAttribute('aria-pressed','true');
+  frozen=[...document.querySelectorAll('main button,main select,main input,main textarea')].filter(c=>c!==button).map(c=>[c,c.disabled]);
+  for(const [control] of frozen)control.disabled=true;
+  await plot(true);
+  for(const [control] of frozen)control.disabled=true;
+  if(!pickToken)endOutlierMode();
+  else $('hint').textContent='Click visible outliers, then Finish picking.';
+  button.disabled=false;return
+ }
+ try{
+  await pickQueue;
+  const r=await api('finish-picks',{...query(),token:pickToken,ids:[...pickIds]});
+  appendCalls(r.commands);endOutlierMode();view(false);await plot(true)
+ }catch(e){err(e);endOutlierMode()}
+ button.disabled=false
+};
+function pickPoint(g,xx,yy,rect){
+ const panel=geom.indexOf(g);
+ const request={...query(),token:pickToken,panel,x:xx,y:yy,width:rect.width,height:rect.height};
+ pickQueue=pickQueue.then(async()=>{
+  const r=await api('pick-point',request);
+  if(!pickIds.has(r.id)){
+   pickIds.add(r.id);const [a,b,w,h]=g.box,m=document.createElement('i');m.className='picked-point';
+   m.style.left=(a+w*(r.x-g.x[0])/(g.x[1]-g.x[0]))*100+'%';
+   m.style.top=(b+h*(g.y[1]-r.y)/(g.y[1]-g.y[0]))*100+'%';document.querySelector('.stage').append(m)
+  }
+  $('hint').textContent=pickIds.size+' distinct pick(s) · latest '+r.hand+' · Finish picking to append.'
+ }).catch(err)
+}
+
+function selectionMode(on){
+ picking=on;region={};corner=null;$('mark').hidden=true;
+ $('pick').setAttribute('aria-pressed',String(on));$('pick').textContent=on?'Cancel mouse selection':'Select to flag';
+ $('hint').textContent=on?'Click two horizontal bounds in a time or frequency panel.':'Zoom with two left clicks in one panel.'
+}
+const unchecked=new Set();
+function showApproved(rows,done){
+ const list=$('approved-list'),scroll=list.scrollTop;
+ const fragment=document.createDocumentFragment();
+ let group,previous;
+ for(const row of rows){
+  if(row.antenna!==previous){
+   group=document.createElement('div');group.className='antenna-group';
+   const seed=row.number??Array.from(row.antenna).reduce((a,c)=>a*31+c.charCodeAt(0),0);
+   group.style.backgroundColor='hsl('+((seed*137.508+150)%360)+' 55% 93%)';
+   const title=document.createElement('h3');title.textContent=row.antenna+' · ID '+(row.number??'unknown');
+   group.append(title);fragment.append(group);previous=row.antenna
+  }
+  const label=document.createElement('label');label.className='approved-call';
+  const toggle=document.createElement('input');toggle.type='checkbox';toggle.checked=!unchecked.has(row.uid);toggle.disabled=done;
+  const code=document.createElement('code');code.textContent=row.text;label.append(toggle,code);group.append(label);
+  toggle.onchange=()=>{if(toggle.checked)unchecked.delete(row.uid);else unchecked.add(row.uid);
+   updateCount();limits=null;plot()}
+ }
+ function updateCount(){
+  $('approved-status').textContent=rows.length?(rows.length-unchecked.size)+' of '+rows.length+' enabled for preview':'No approved commands yet.'
+ }
+ list.replaceChildren(fragment);list.scrollTop=scroll;updateCount()
+}
+function query(){return {index:S.index,scan:+$('scan').value,pair:$('pair').value,spw:$('spw').value,seconds:+$('seconds').value,
+ channels:+$('channels').value,hands:[...hands],size:+$('size').value,zoom,after,unchecked:[...unchecked],pickable:outlierMode,text:$('commands').value,reason:$('reason').value}}
+function clearZoom(){selectionMode(false);$('hint').textContent='Zoom with two left clicks in one panel.';zoom={};history=[];corner=null;$('mark').hidden=true;limits=null}
+function display(s,replace=true){
+ S=s;showApproved(s.approved_commands,s.done);revision++;geom=[];$('chart').removeAttribute('src');clearZoom();view(false);$('error').textContent='';
+ opts('scan',s.scans,s.scan);opts('pair',s.pairs,s.pair);$('scan').disabled=s.pdf;
+ $('iterLabel').hidden=s.pdf;$('prev').hidden=$('next').hidden=s.pdf; $('prev').disabled=!s.previous;$('next').disabled=!s.following;
+ $('paths').textContent=[s.source,s.report,s.out].filter(Boolean).join('  •  ');
+ $('progress').textContent=s.pdf?(s.done?'Review complete':('Command '+(s.index+1)+' / '+s.total)):'Manual review';
+ $('plotTitle').textContent=s.field+'  /  Scan '+s.scan+'  /  '+s.pair.replace('&','–')+(s.pdf?'':'  ·  Baseline '+(s.pairs.indexOf(s.pair)+1)+' of '+s.pairs.length);
+ $('count').textContent=s.approved+' approved decisions';
+ $('warning').textContent='';$('view').disabled=s.done;
+ if(replace)edit(s.command,s.reason)
+ for(const id of ['approve','skip','add'])$(id).disabled=s.done;
+ $('diag').hidden=!s.reference;$('diag').open=false;$('spectrum').removeAttribute('src');
+ if(s.done){$('outliers').disabled=true;$('chart').removeAttribute('src');$('editor').hidden=true;$('status').textContent='All queued commands reviewed.';return}
+ plot()
+}
+async function plot(keepLimits=false){
+ if(!S||S.done)return;const rev=++revision;geom=[];pickToken=null;$('outliers').disabled=true;$('approve').disabled=$('add').disabled=true;$('chart').style.opacity='.48';$('status').textContent='Drawing…';$('error').textContent='';
+ try{const q=query();if(q.after||keepLimits===true)q.limits=limits;
+ const data=await api('plot',q);if(rev!==revision)return;
+ $('chart').style.visibility='visible';$('chart').src='data:image/png;base64,'+data.image;geom=data.axes;pickToken=data.pickToken||null;$('outliers').disabled=outlierMode;
+ limits=geom.map(g=>g.y);$('approve').disabled=!data.ready;$('add').disabled=false;$('chart').style.opacity='1';
+ $('status').textContent=(after?'After':'Before')+' · '+data.valid.toLocaleString()+' valid in view · '+data.affected.toLocaleString()+' affected on baseline/scan';
+ $('warning').textContent=data.missing.length?'No matching channels for '+data.missing.join(' / ')+' in the target spectral grid.':'';
+ if(data.error && (S.pdf||$('commands').value!==S.command))err(data.error);
+ }catch(e){if(rev===revision){geom=[];$('chart').removeAttribute('src');$('status').textContent='';err(e)}}
+}
+for(const [h,c] of Object.entries(colors)){
+ const b=document.createElement('button');b.textContent=h;b.className='prod';b.style.setProperty('--c',c);b.setAttribute('aria-pressed','true');
+ b.onclick=()=>{hands.has(h)?hands.delete(h):hands.add(h);b.setAttribute('aria-pressed',String(hands.has(h)));plot(true)};$('products').append(b)
+}
+for(const key of ['spw','seconds','channels','size'])$(key).onchange=()=>{
+ $('sz').textContent=$('size').value+' pt';plot()
+};
+$('view').onclick=()=>{view(!after);plot(true)};
+$('size').oninput=()=>$('sz').textContent=$('size').value+' pt';
+async function nav(scan,pair){
+ if(busy)return;
+ if(!S.pdf && ($('commands').value!==S.command || $('reason').value!==S.reason) && !confirm('Discard the draft for the current baseline?')){
+  $('scan').value=S.scan;$('pair').value=S.pair;return
+ }
+ busy=true;
+ try{display(await api('state',{scan,pair}),!S.pdf);$('saved').textContent=''}
+ catch(e){$('scan').value=S.scan;$('pair').value=S.pair;err(e)}
+ finally{busy=false}
+}
+$('pair').onchange=()=>nav(S.scan,$('pair').value);
+$('scan').onchange=()=>nav(+$('scan').value,'');
+$('prev').onclick=()=>{if(S.previous)nav(...S.previous)};
+$('next').onclick=()=>{if(S.following)nav(...S.following)};
+$('chart').onclick=e=>{
+ if(e.button!==0||!geom.length)return;
+ const rect=e.target.getBoundingClientRect(),x=(e.clientX-rect.left)/rect.width,y=(e.clientY-rect.top)/rect.height;
+ const g=geom.find(({box:[a,b,w,h]})=>x>=a&&x<=a+w&&y>=b&&y<=b+h);if(!g)return;
+ const [a,b,w,h]=g.box,xx=g.x[0]+(x-a)/w*(g.x[1]-g.x[0]),yy=g.y[1]-(y-b)/h*(g.y[1]-g.y[0]);
+ if(outlierMode){if(pickToken&&!$('outliers').disabled)pickPoint(g,xx,yy,rect);return}
+ if(!corner||corner.id!==geom.indexOf(g)){corner={id:geom.indexOf(g),xx,yy};$('mark').style.left=x*100+'%';$('mark').style.top=y*100+'%';$('mark').hidden=false;$('hint').textContent=picking?'Click the second horizontal bound in this panel.':'Click the opposite corner in the same panel.';return}
+ if(picking){
+   region[g.axis]=[Math.min(corner.xx,xx),Math.max(corner.xx,xx)];
+   corner=null;$('mark').hidden=true;
+   $('hint').textContent=Object.entries(region).map(([k,r])=>(k==='t'?'Time ':'Frequency ')+r.map(v=>v.toFixed(3)).join('–')+(k==='t'?' s':' GHz')).join(' · ')+' · Add flag selection, or pick another axis.';
+   return
+ }
+ if(corner.xx!==xx){history.push({...zoom});zoom={...zoom,[g.axis]:[corner.xx,xx].sort((a,b)=>a-b),...(g.amplitude&&corner.yy!==yy?{y:[corner.yy,yy].sort((a,b)=>a-b)}:{})};plot()}
+ corner=null;$('mark').hidden=true;$('hint').textContent='Zoom with two left clicks in one panel.'
+};
+$('pick').onclick=()=>selectionMode(!picking);
+$('back').onclick=()=>{selectionMode(false);zoom=history.pop()||{};corner=null;$('mark').hidden=true;plot()};
+$('reset').onclick=()=>{clearZoom();plot()};
+$('add').onclick=async()=>{try{const q=query();if(picking){if(corner||!Object.keys(region).length)throw Error('Complete two clicks in one panel first.');q.zoom={...zoom,...region}}draft=await api('selection',q);$('fields').replaceChildren();
+ for(const key of Object.keys(draft)){const lab=document.createElement('label');lab.textContent=key;const i=document.createElement('input');i.value=draft[key];i.dataset.key=key;lab.append(i);$('fields').append(lab)}
+ $('dialog').showModal()}catch(e){err(e)}};
+$('cancel').onclick=()=>$('dialog').close();
+$('append').onclick=()=>{for(const i of $('fields').querySelectorAll('input'))draft[i.dataset.key]=i.value;
+ const call='flagdata('+Object.entries(draft).map(([k,v])=>k+'='+JSON.stringify(v)).join(', ')+')';
+ appendCalls([call]);$('dialog').close();selectionMode(false);view(false);box.oninput()
+};
+async function decide(approve){
+ if(busy)return;busy=true;
+ try{const q=query();q.approve=approve;q.iterate=$('iterate').checked;
+
+ const last=!S.pdf && q.iterate && !S.following;
+ const s=await api('decide',q);$('saved').textContent=(approve?'Approved and written.':'Skipped.')+(last?' Reached the last baseline of the final scan.':'');
+ if(last)$('iterate').checked=false;display(s)
+ }catch(e){err(e)}finally{busy=false}
+}
+$('exit').onclick=async()=>{if(busy||!confirm('Skip the remaining review and exit? Previous approvals are saved.'))return;
+ busy=true;try{const r=await api('exit',{...query(),iterate:$('iterate').checked});revision++;clearTimeout(timer);
+ const main=document.querySelector('main');main.replaceChildren();const h=document.createElement('h1');h.textContent='Review closed';const p=document.createElement('p');p.textContent='Approved commands saved to '+r.out;main.append(h,p)
+ }catch(e){err(e);busy=false}};
+$('approve').onclick=()=>decide(true);$('skip').onclick=()=>decide(false);
+$('diag').ontoggle=async()=>{if(!$('diag').open||$('spectrum').hasAttribute('src'))return;const idx=S.index;try{const r=await api('reference',query());if(S.index===idx)$('spectrum').src='data:image/png;base64,'+r.image}catch(e){err(e)}};
+api('state',{}).then(s=>{display(s);$('iterate').checked=!!s.iterate}).catch(err);
+</script></body></html>

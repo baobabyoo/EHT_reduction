@@ -1,0 +1,86 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Passband flag review</title><style>
+*{box-sizing:border-box}body{margin:20px auto;padding:0 16px;max-width:1500px;background:#f4f6f5;color:#203438;font:15px system-ui}h1{font-size:24px}h2{font-size:16px;margin-top:0}
+main{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:14px}section,aside{background:white;border:1px solid #ced8d6;border-radius:8px;padding:12px;margin:10px 0}.bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0}select,button,textarea,input{font:inherit}button,select{padding:5px 8px}button{cursor:pointer}button[aria-pressed=true]{background:#205853;color:white}aside{align-self:start;max-height:75vh;overflow:auto;position:sticky;top:12px}aside label{display:block;overflow-wrap:anywhere;font:12px monospace;padding:8px 0}textarea{width:100%;min-height:5em}#cmd{font:13px monospace}canvas{display:block;width:100%;height:210px;cursor:crosshair}figure{margin:14px 0}figcaption{display:flex;justify-content:space-between}#status{min-height:1.4em;color:#843800}#paths{overflow-wrap:anywhere}.readout{font-variant-numeric:tabular-nums;min-height:1.4em}details{margin:8px 0}@media(max-width:850px){main{grid-template-columns:1fr}aside{position:static}}
+</style></head><body><h1>Passband flag review</h1><p id="progress" role="status"></p><details><summary>Tables and output file</summary><p id="paths"></p></details><main><div><section>
+<div class="bar"><button id="prev">Previous</button><label>Antenna <select id="ant"></select></label><button id="next">Next</button><label>Symbol size <input type="range" min="1" max="5" value="2" id="size"></label></div>
+<div class="bar"><button id="above">Clip above</button><button id="below">Clip below</button><button id="channel">Pick channel</button><button id="spw">Pick SPW</button><button id="zoom">Zoom range</button><button id="reset">Zoom out</button><button id="after">Show after flagging</button></div>
+<div id="hint"></div><div class="readout" id="readout"></div><div id="plots"></div></section>
+<section><label>CASA flag commands<textarea id="cmd" spellcheck="false"></textarea></label><label>Reason<textarea id="reason"></textarea></label>
+<div class="bar"><button id="approve">Approve</button><button id="skip">Skip antenna</button><button id="exit">Skip remaining and exit</button></div><div role="status" id="status"></div></section></div>
+<aside><h2>Approved commands</h2><small>Checked commands are applied in the plots.</small><div id="list"></div></aside></main>
+<script src="calibration_queue.js"></script><script>
+const $=s=>document.getElementById(s);
+let mode='',panels=[],after=false,zoom=null,first=null,version=0,context=0,timer,unchecked=new Set();
+async function api(action,body={}){const res=await fetch(action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const data=await res.json();if(!res.ok)throw Error(data.error||res.statusText);return data}
+window.onunhandledrejection=e=>{$('status').textContent=e.reason.message};
+function setMode(m){mode=m;first=null;for(const id of ['above','below','channel','spw','zoom'])$(id).setAttribute('aria-pressed',String(id===m));
+ $('hint').textContent=({above:'Click a height to select values above it across all SPWs in that panel.',below:'Click a height to select values below it across all SPWs in that panel.',
+ spw:'Click inside one SPW to select all its channels for this hand and antenna.',channel:'Click a point to select its channel for this table, antenna and hand across all solution rows.',zoom:'Click two frequency limits in the plots.'})[m]||''}
+for(const id of ['above','below','channel','spw','zoom'])$(id).onclick=()=>setMode(mode===id?'':id);
+function approved(lines,stations){const list=$('list');list.replaceChildren();for(const line of new Set(lines)){const l=document.createElement('label'),b=document.createElement('input');b.type='checkbox';b.checked=!unchecked.has(line);
+ b.onchange=()=>{b.checked?unchecked.delete(line):unchecked.add(line);refresh()};const station=stations[line],idx=[...$('ant').options].findIndex(opt=>opt.value===station);
+ l.style.background=['#edf3fa','#f8f0e5','#ebf4eb','#f5edf7','#e9f4f4','#faf1f2','#f2f2e7'][idx%7];l.append(b,line);list.append(l)}}
+async function refresh(){const v=++version;
+ try{const r=await api('view',{ant:$('ant').value,text:$('cmd').value,after,unchecked:[...unchecked]});if(v!==version)return;
+ panels=r.panels;approved(r.approved,r.stations);draw();$('status').textContent=''}
+ catch(e){if(v===version){panels=[];draw();$('status').textContent=e.message}}}
+function draw(){const plots=$('plots');plots.replaceChildren();for(const p of panels){
+ const current=queueItem();
+ if(current && (p.kind!==(current.table==='bpass_complx.t'?'phase':'amplitude')||p.hand!==Number(current.parameter.slice(-1))-1))continue;
+ const fig=document.createElement('figure'),cap=document.createElement('figcaption'),title=document.createElement('strong'),count=document.createElement('span'),cv=document.createElement('canvas');
+ const phase=p.kind==='phase',quantity=phase?'Phase (deg)':'Amplitude',hand=p.hand?'L':'R';
+ title.textContent=$('ant').value+' · '+hand+' polarization / '+quantity;count.textContent=p.selected+' selected / '+p.count+' visible';
+ cap.append(title,count);fig.append(cap,cv);plots.append(fig);cv.setAttribute('aria-label',title.textContent+' versus frequency');
+ const W=cv.clientWidth,H=cv.clientHeight,ratio=window.devicePixelRatio||1;cv.width=W*ratio;cv.height=H*ratio;const ctx=cv.getContext('2d');ctx.scale(ratio,ratio);
+ const left=62,right=W-16,top=10,bottom=H-46;
+ const bands=[...p.bands].sort((a,b)=>a[1]-b[1]);
+ const [lo,hi]=zoom||[Math.min(...bands.map(b=>b[1])),Math.max(...bands.map(b=>b[2]))];
+ const shown=p.points.filter(a=>a[2]>=lo&&a[2]<=hi);
+ const low=phase?-180:0,high=phase?180:Math.max(1e-9,shown.reduce((max,a)=>Math.max(max,a[3]),0)*1.06);
+ const X=f=>left+(f-lo)/(hi-lo)*(right-left),Y=v=>bottom-(v-low)/(high-low)*(bottom-top);
+ ctx.font='12px system-ui';ctx.save();ctx.beginPath();ctx.rect(left,top,right-left,bottom-top);ctx.clip();
+ bands.forEach((b,i)=>{if(i%2===0){ctx.fillStyle='#e6eff5';ctx.fillRect(X(b[1]),top,X(b[2])-X(b[1]),bottom-top)}});
+ for(let i=0;i<=4;i++){let y=top+(bottom-top)*i/4;ctx.strokeStyle='#d1dce0';ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(right,y);ctx.stroke()}
+ const r=+$('size').value;for(let pass=0;pass<=1;pass++){
+ ctx.fillStyle=pass?'#a52380':p.hand?'#bc6500':'#176e97';
+ for(let i=0;i<p.points.length;i++){const a=p.points[i];if(p.hits[i]!==pass||a[2]<lo||a[2]>hi)continue;
+ const x=X(a[2]),y=Y(a[3]);ctx.beginPath();ctx.arc(x,y,r+(pass?1:0),0,2*Math.PI);ctx.fill()}}
+ ctx.restore();ctx.strokeStyle='#627980';ctx.strokeRect(left,top,right-left,bottom-top);ctx.fillStyle='#253940';ctx.textAlign='right';
+ for(let i=0;i<=4;i++){const v=low+(high-low)*i/4;ctx.fillText(String(+v.toPrecision(4)),left-5,Y(v)+4)}
+ ctx.textAlign='center';for(let i=0;i<=4;i++){const f=lo+(hi-lo)*i/4;ctx.fillText(f.toFixed(3),X(f),bottom+17)}ctx.fillText('Frequency (GHz)',(left+right)/2,H-5);
+ if(!shown.length)ctx.fillText('No visible solutions',(left+right)/2,(top+bottom)/2);
+ function cursor(e){const rect=cv.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+ if(x<left||x>right||y<top||y>bottom)return null;
+ return {x,y,f:lo+(hi-lo)*(x-left)/(right-left),v:low+(high-low)*(bottom-y)/(bottom-top)}}
+ cv.onmousemove=e=>{const c=cursor(e);if(!c)return;const band=bands.find(b=>c.f>=b[1]&&c.f<=b[2]);
+ $('readout').textContent=hand+' · '+p.kind+' '+c.v.toFixed(4)+(phase?'°':'')+' · '+c.f.toFixed(5)+' GHz'+(band?' · SPW '+band[0]:'')};
+ cv.onclick=async e=>{const c=cursor(e);if(!c||!mode)return;
+ if(mode==='zoom'){if(first===null){first=c.f;$('hint').textContent='Click the other frequency limit.'}else if(first!==c.f){zoom=[Math.min(first,c.f),Math.max(first,c.f)];setMode('');draw()}return}
+ const q={ant:$('ant').value,kind:p.kind,hand:p.hand,operation:mode,value:c.v};
+ if(mode==='spw'){const band=bands.find(b=>c.f>=b[1]&&c.f<=b[2]);if(!band){$('status').textContent='Click inside a spectral window.';return}q.spw=band[0]}
+ if(mode==='channel'){let closest=null,d=144;for(const a of shown){const n=(X(a[2])-c.x)**2+(Y(a[3])-c.y)**2;if(n<d){d=n;closest=a}}
+ if(!closest){$('status').textContent='Click closer to a visible point.';return}q.spw=closest[0];q.channel=closest[1]}
+ const seq=context,res=await api('make',q);if(seq!==context)return;
+ $('cmd').value=[...new Set([...$('cmd').value.split('\n'),res.line].filter(Boolean))].join('\n');await refresh()};
+ }}
+function change(){context++;panels=[];zoom=null;first=null;draw();$('readout').textContent='';
+ $('prev').disabled=$('ant').selectedIndex===0;$('next').disabled=$('ant').selectedIndex===$('ant').length-1;queueDraft($('ant').value,null);
+ if(queued()){$('ant').disabled=$('prev').disabled=$('next').disabled=true;$('skip').textContent='Skip command'}
+ return refresh()}
+function step(d){const i=$('ant').selectedIndex+d;if(i>=0&&i<$('ant').length){$('ant').selectedIndex=i;return change()}return refresh()}
+$('ant').onchange=change;$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);
+$('reset').onclick=()=>{zoom=null;setMode('');draw()};$('size').oninput=draw;
+$('cmd').oninput=()=>{version++;clearTimeout(timer);timer=setTimeout(refresh,180)};
+$('after').onclick=()=>{after=!after;$('after').textContent=after?'Show before flagging':'Show after flagging';refresh()};
+function clearDraft(){context++;$('cmd').value='';$('reason').value='';setMode('')}
+$('approve').onclick=async()=>{$('approve').disabled=true;try{await api('approve',{index:reviewQueue.index,text:$('cmd').value,reason:$('reason').value});clearDraft();await nextDecision()}finally{if($('approve'))$('approve').disabled=false}};
+async function nextDecision(){
+   if(reviewQueue.entries.length){if(!await syncReview())return;if(queued()){$('ant').value=queueItem().ant;return change()}}
+   return step(1)
+ }
+ $('skip').onclick=async()=>{if(queued())await api('skip',{index:reviewQueue.index});clearDraft();await nextDecision()};$('exit').onclick=async()=>{const r=await api('exit');document.body.textContent='Review closed. Approved commands: '+r.out};
+window.onresize=draw;
+(async()=>{const r=await api('state');if(!await syncReview())return;$('paths').textContent=r.paths.join(' + ')+' → '+r.out;for(const a of r.antennas)$('ant').add(new Option(a,a));if(queued())$('ant').value=queueItem().ant;await change()})();
+</script></body></html>

@@ -1,0 +1,133 @@
+{
+  "input": "M87_calibrated.uvf",
+  "source": "M87",
+  "baseline": [
+    "NN",
+    "PV"
+  ],
+  "scan": 2,
+  "scan_log": "diagnostics_2026-09-16_15-00-11/list.obs",
+  "start_utc": "2026-03-17T03:11:00",
+  "end_utc": "2026-03-17T03:15:00",
+  "model": "GPT-6.2 Astra High",
+  "time_bin_s": 4,
+  "amplitude_scale": 1000,
+  "channel_diagnostic": {
+    "file": "diagnostics_2026-09-16_15-00-11/PLOTS_VISIBILITIES/M87_scan2_plots_vs_freq.ps",
+    "page": 14,
+    "channels_per_if": 116,
+    "spacing_mhz": 0.5,
+    "frequency_ghz": [
+      [
+        154.285,
+        226.5
+      ],
+      [
+        521.832,
+        228.0
+      ]
+    ],
+    "amplitude_jy": [
+      [
+        403.16,
+        0.0
+      ],
+      [
+        248.262,
+        0.004
+      ]
+    ],
+    "phase_deg": [
+      [
+        140.48,
+        -100
+      ],
+      [
+        56.582,
+        100
+      ]
+    ],
+    "marked_channels": [
+      [
+        3,
+        115
+      ],
+      [
+        8,
+        115
+      ],
+      [
+        11,
+        41
+      ],
+      [
+        24,
+        115
+      ],
+      [
+        28,
+        97
+      ]
+    ],
+    "description": "The UVFITS stores one channel per IF. Page 2 replots marker centers from the NN–PV page of the rPICARD spectrum, one scan-level value per channel and hand. The plot coordinates give approximate amplitudes and phases; channel frequencies match the observation grid. Rings mark all channels with RR above 2× and LL above 1.5× their respective within-IF median amplitudes. Three coincide with the final channel (115) of SPWs 3, 8 and 24. The largest RR peak is at 227.626789 GHz (24/115), about 7.4× its IF median. Features A and B also contain peaks at 11/41 and 28/97. At 28/97, RL is about 3.8× its median. Both cross-hands also spike at the three last-channel peaks. In IF 28, RR stays elevated across much of the window as well as spiking at channel 97.",
+    "command_note": "These optional channel selections target the original 116-channel windows. Use a working copy whose station names, SPW IDs and channel grid match the observation log. The example filename is a placeholder. The local data support checking the frequencies and indices; these commands have not been executed on the original MS. Compare other baselines before expanding any selection to NN or PV alone. At each circled peak, a cross-hand is included if its amplitude also exceeds its window median by three robust standard deviations (1.4826 × MAD).",
+    "commands": [
+      "flagdata(vis='channelized_working_copy.ms', mode='manual', field='M87', antenna='NN&PV',\n         scan='2', spw='3:115', correlation='RR,LL,RL,LR')",
+      "flagdata(vis='channelized_working_copy.ms', mode='manual', field='M87', antenna='NN&PV',\n         scan='2', spw='8:115', correlation='RR,LL,RL,LR')",
+      "flagdata(vis='channelized_working_copy.ms', mode='manual', field='M87', antenna='NN&PV',\n         scan='2', spw='11:41', correlation='RR,LL')",
+      "flagdata(vis='channelized_working_copy.ms', mode='manual', field='M87', antenna='NN&PV',\n         scan='2', spw='24:115', correlation='RR,LL,RL,LR')",
+      "flagdata(vis='channelized_working_copy.ms', mode='manual', field='M87', antenna='NN&PV',\n         scan='2', spw='28:97', correlation='RR,LL,RL')"
+    ]
+  },
+  "time_marks": [
+    [
+      25,
+      64
+    ]
+  ],
+  "spectral_marks": [
+    {
+      "if": 11,
+      "label": "A",
+      "pols": [
+        "RR",
+        "LL"
+      ]
+    },
+    {
+      "if": 28,
+      "label": "B",
+      "pols": [
+        "RR",
+        "RL"
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "title": "Early loss of coherent amplitude",
+      "body": "The first positive weights occur at 25.6 s. From 25–64 s the median 4 s amplitudes are 0.018 (RR) and 0.017 (LL) on the plotted scale. After 72 s they are 0.876 and 0.795. The shared recovery is abrupt. The amber band marks the conservative candidate interval. The transition from 64–72 s is left for review."
+    },
+    {
+      "title": "What the individual integrations show",
+      "body": "From 25–64 s, only 18% of valid RR samples and 18% of LL samples lie within 30° of zero phase. From 72 s onward, the fractions rise to 96% and 95%. The early median individual amplitude is 0.205 for both hands on the plotted scale. The much smaller coherent means on page 1 reflect cancellation among samples with widely dispersed phases."
+    },
+    {
+      "title": "A  ·  226.836 GHz, IF 11",
+      "body": "Relative to the mean of the two adjacent IF amplitudes, RR is 21% higher and LL is 11% lower. Their phases deviate by about −6° and +5° from the adjacent complex mean. This smaller feature merits comparison with other baselines before flagging."
+    },
+    {
+      "title": "B  ·  227.832 GHz, IF 28",
+      "body": "RR reaches 2.23 times its adjacent-IF amplitude and shifts −23° in phase. RL reaches 2.25 times its neighbors. From 72–156 s and 156–240 s, RR stays above 2.1 times and RL above 1.8 times their neighbors. The recurrence supports a candidate for both products. The channel spectrum on page 2 shows the structure within this IF."
+    },
+    {
+      "title": "Antenna attribution and phase",
+      "body": "A single baseline cannot distinguish NN from PV. RR and RL share R at the first station in the plotted UVFITS orientation, making NN R worth checking on independent baselines. Outside the localized features, RR/LL phase stays near zero across frequency. The weaker cross-hands show greater phase scatter."
+    }
+  ],
+  "command_note": "Run only on a working Measurement Set imported from this UVFITS with matching station and SPW mappings. Both selections were tested in order with CASA 6.6.6 on a disposable import of just this baseline and scan. The changed flags matched the intended cells exactly: 6,144 in the first call and 976 additional cells in the second.",
+  "commands": [
+    "flagdata(vis='M87_calibrated.ms', mode='manual', field='M87', antenna='NN&PV',\n         timerange='2026/03/17/03:11:25~2026/03/17/03:12:04', correlation='RR,LL')",
+    "flagdata(vis='M87_calibrated.ms', mode='manual', field='M87', antenna='NN&PV',\n         timerange='2026/03/17/03:11:00~2026/03/17/03:15:00', spw='28:0', correlation='RR,RL')"
+  ]
+}
