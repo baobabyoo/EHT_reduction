@@ -22,8 +22,32 @@ Collect all flag commands into an ASCII file ending with _Codexflag_commands.py.
 
 ## Step 2. Human flagging
 
-This part should be executed with a human analyzer, not Codex. Use the visflag_widget tool to validate Codex's flagging in the following two steps. 
-(1) When launching the tool, import the ASCII-format flag commands. The tool will only present the data that are relevant to your flag commands. Output your approved flag commands to another ASCII file ending with _Codexflag_commands_approved.py
-(2) When launching the tool, import the ASCII file ending with _Codexflag_commands_approved.py, and use the --examine option when launching the tool. In this case, it will iterate over all available data, which allows you to include more flag commands. Output your final flag commands to another ASCII file ending with _humanlag_commands.py. In the 2nd step, my tips are (i) first look at frequency-binned data in the time domain, and then time-binned data in the frequency domain, and finally, try to identify the remaining issues. 
+A human analyzer runs both passes. Start in the observation directory containing the visibility file and the Step 1 ASCII proposals, with the [widget environment](../../ancillary_py_codes/visflag_widget/README.md) active. In the same shell, set the target basename to match the proposal filename. This example uses M87 and assumes the observation is inside the project checkout.
 
- 
+```bash
+app="$(git rev-parse --show-toplevel)/tools/ancillary_py_codes/visflag_widget/app.py"
+target=M87
+vis="${target}_calibrated.uvf"
+```
+
+### Pass 1. Review the proposed commands
+
+```bash
+python3 "$app" "$vis" \
+  --commands "${target}_Codexflag_commands.py" \
+  --output "${target}_Codexflag_commands_approved.py"
+```
+
+The widget opens the matching scan and baseline for each proposal. Check the scan ID source, the highlighted samples and the reason. Use **Show after flagging** to preview the effect. Edit the command if needed, then click **Approve & append** or **Skip**. Close this session before starting the second pass.
+
+### Pass 2. Examine all scans and baselines
+
+```bash
+python3 "$app" "$vis" --examine \
+  --commands "${target}_Codexflag_commands_approved.py" \
+  --output "${target}_humanlag_commands.py"
+```
+
+Inspect frequency-binned data versus time first, then time-binned data versus frequency. Check the native samples for features hidden by averaging. Matching first-pass commands appear as suggestions. Approve the selections you want in the final export, including retained proposals and any new selections. If the first pass yielded an empty list, omit the `--commands` argument and its filename to browse all data from scratch.
+
+Keep each ASCII output with its companion `.review.json`. To resume, repeat the command for that pass with the same input and output. Approval saves CASA commands for later application to the intended measurement set.

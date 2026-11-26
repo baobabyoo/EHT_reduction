@@ -63,6 +63,7 @@ class Fringe:
         self.points = {}
         self.path = str(path)
         self.groups = {}
+        self.scan_spws = {}
         self.delay_flags = {}
         self.delay_totals = {}
         self.sources = {}
@@ -73,6 +74,7 @@ class Fringe:
             spw = int(d['SPECTRAL_WINDOW_ID'][row])
             group = self.groups.setdefault((ant, scan), [])
             position = (ant, scan)
+            self.scan_spws.setdefault(position, set()).add(spw)
             self.sources.setdefault(position, set()).add(str(d['FIELD'][d['FIELD_ID'][row]]))
             self.delay_totals[position] = self.delay_totals.get(position, 0) + 2
             self.delay_flags[position] = self.delay_flags.get(position, 0) + int(d['FLAG'][[1,5],0,row].sum())
@@ -164,7 +166,7 @@ class Fringe:
             return dict(points=points, sources=sources, band=self.band, approved=approved,commands=self.approved_commands())
         if action == 'points':
             position = (q['ant'], int(q['scan']))
-            return dict(points=self.groups[position], flagged_delays=self.delay_flags[position],
+            return dict(points=self.groups[position], spws=sorted(self.scan_spws[position]), flagged_delays=self.delay_flags[position],
                         total_delays=self.delay_totals[position],
                         sources=sorted(self.sources[position]), band=self.band, approved=approved,commands=self.approved_commands())
         keys = self.parse(q['text'])

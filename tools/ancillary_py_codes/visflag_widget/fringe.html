@@ -26,6 +26,15 @@ async function api(action,body={}) {
 window.onunhandledrejection=e=>{$('status').textContent=e.reason.message};
 function options(el,vals,preferred){el.replaceChildren(...vals.map(v=>new Option(v,v)));if(vals.map(String).includes(String(preferred)))el.value=preferred}
 function node(name,attrs,txt){const n=document.createElementNS(ns,name);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);if(txt!==undefined)n.textContent=txt;svg.append(n);return n}
+function spwRanges(values){
+ const ranges=[];
+ for(const spw of values){
+   const last=ranges[ranges.length-1];
+   if(last && last[1]+1===spw)last[1]=spw;
+   else ranges.push([spw,spw]);
+ }
+ return ranges.map(([a,b])=>a===b?String(a):a+'–'+b);
+}
 function render(){
  svg.replaceChildren();if(!scanData)return;
  const hidden=new Set(approved.filter(row=>!disabled.has(row.uid)).flatMap(row=>row.keys.map(id)));
@@ -35,13 +44,26 @@ function render(){
  const lo=bounds?.[0]??(scanData.band[0]-.02),hi=bounds?.[1]??(scanData.band[1]+.02);
  const x=f=>75+815*(f-lo)/(hi-lo);svg.dataset.lo=lo;svg.dataset.hi=hi;
  const panels=delayOnly?scanData.sources.map(source=>({par:'delay',source})):[{par:'delay'},{par:'phase'}];
- const height=panels.length*212+36;
+ const available=delayOnly?null:new Set(points.filter(p=>!excluded(p)).map(p=>id(p.key)));
+ const labels=[];
+ if(!delayOnly){
+   for(const hand of ['R','L']){
+     for(const parameter of ['delay','phase']){
+       const missing=scanData.spws.filter(spw=>!available.has(id([$('ant').value,+$('scan').value,spw,hand,parameter])));
+       const ranges=spwRanges(missing);
+       for(let i=0;i<ranges.length;i+=12)
+         labels.push(hand+' '+parameter+' unavailable · SPW '+ranges.slice(i,i+12).join(', '));
+     }
+   }
+ }
+ const height=panels.length*212+36+labels.length*17;
  svg.setAttribute('viewBox','0 0 920 '+height);
  svg.setAttribute('aria-label',delayOnly?'Delay against frequency for all scans by source':'Delay and phase against frequency');
  panels.forEach(({par,source},j)=>{
  const phase=par==='phase';
- const top=22+212*j,h=168;
- const pp=phase&&flagged>0?[]:visible.filter(p=>p.key[4]===par&&(!delayOnly||p.source===source)&&p.freq>=lo&&p.freq<=hi);
+ const top=22+212*j+(phase?labels.length*17:0),h=168;
+ if(phase)labels.forEach((text,i)=>node('text',{x:75,y:top-9-(labels.length-1-i)*17,'font-size':12},text));
+ const pp=visible.filter(p=>p.key[4]===par&&(!phase||available.has(id([...p.key.slice(0,4),'delay'])))&&(!delayOnly||p.source===source)&&p.freq>=lo&&p.freq<=hi);
  if(delayOnly)node('text',{x:75,y:top-6,'font-weight':'bold'},source);
  let ymin=-180,ymax=180;if(!phase){let vals=pp.map(p=>p.value);let a=vals.length?Math.min(...vals):-1,b=vals.length?Math.max(...vals):1;let pad=(b-a)*.06||1;ymin=a-pad;ymax=b+pad}
  const y=v=>top+h-h*(v-ymin)/(ymax-ymin);
@@ -51,7 +73,7 @@ function render(){
  if(!pp.length){
    let message='No visible solutions';
    if(!delayOnly&&!phase&&flagged===scanData.total_delays)message='delay is fully flagged';
-   if(phase&&flagged>0)message='phase shown only for scans with all delays unflagged';
+   if(phase&&flagged===scanData.total_delays)message='No phase shown: all delays flagged';
    node('text',{x:482,y:top+85,'text-anchor':'middle'},message);
  }
  for(const p of pp){const cx=x(p.freq),cy=y(p.value),r=+$('size').value,c=p.key[3]==='R'?'#0072b2':'#d48600';
