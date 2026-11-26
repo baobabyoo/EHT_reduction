@@ -59,5 +59,5 @@ For another observation, give its actual directory and task, such as “Use $eht
 ## Versions and development history
 | Version | Date | Description |
 |---|---|---|
-| beta | 2026.Nov.07 | Proposed a workflow to flag visibility, delay solution, and complex/scalar passband solutions with the assistance of AI. Allows and requires a human analyzer to review and approve |
+| beta | 2026.Nov.07 | Proposed a workflow to flag visibility, delay solution, and complex/scalar passband solutions with the assistance of AI. Allows and requires a human analyzer to review and approve. |
 
