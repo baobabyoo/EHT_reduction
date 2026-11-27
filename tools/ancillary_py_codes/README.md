@@ -7,7 +7,7 @@ Start at the EHT_reduction project root. Observations live under `data/rpicard/`
 | `visibility/` | The 13 Python scripts from the reference observation’s inspection directory, plus its single-baseline JSON example. Use this folder for coverage indexing, sample extraction, diagnostic spectra, plotting and report verification. |
 | [visflag_widget/](visflag_widget/README.md) | Interactive delay, bandpass and visibility flag review. Launch the shared app from the observation directory, for example `python3 "$project/tools/ancillary_py_codes/visflag_widget/app.py" M87_calibrated.uvf`. |
 | `workflow_test/` | The historical analysis, approval, reporting and verification drivers from the M87 workflow test. They assume that test’s files and working directory. |
-| `../instructions/Markdowns/` | The visibility inspection guide and the separate delay and bandpass inspection guides. |
+| `../instructions/Markdowns/flaggings/` | The visibility inspection guide and the separate delay and bandpass inspection guides. |
 
 The old script names directly under ancillary_py_codes are relative links so existing paths still work. Edit the files in the named subfolders.
 
@@ -33,6 +33,6 @@ The indexer uses stored scan IDs when available and falls back to matching sourc
 
 ## Continue to review and reporting
 
-Use [the visibility flagging workflow](../instructions/Markdowns/visflag_guide.md) for proposal filenames, output location and the two human review passes. Follow [the visibility inspection guide](../instructions/Markdowns/visibility_inspection_guide.md) for selection, averaging, evidence pages, residual plots and QA. Use the scripts from the shared tools folder and keep the observation’s inspection directory as the working directory. Before running the flag planners, polarization checks, report assembler or export checks for a new target, review their M87-specific paths, selections, measurements and narrative. Derive those values from the new observation. The sample JSON illustrates the preview format and contains measurements for one M87 baseline.
+Use [the visibility flagging workflow](../instructions/Markdowns/flaggings/visflag_guide.md) for proposal filenames, output location and the two human review passes. Follow [the visibility inspection guide](../instructions/Markdowns/flaggings/visibility_inspection_guide.md) for selection, averaging, evidence pages, residual plots and QA. Use the scripts from the shared tools folder and keep the observation’s inspection directory as the working directory. Before running the flag planners, polarization checks, report assembler or export checks for a new target, review their M87-specific paths, selections, measurements and narrative. Derive those values from the new observation. The sample JSON illustrates the preview format and contains measurements for one M87 baseline.
 
-For calibration tables, start with [delay inspection](../instructions/Markdowns/ff_sb_inspection.md) or [bandpass inspection](../instructions/Markdowns/all_antennas_bandpass_inspection.md).
+For calibration tables, start with [delay inspection](../instructions/Markdowns/flaggings/ff_sb_inspection.md) or [bandpass inspection](../instructions/Markdowns/flaggings/all_antennas_bandpass_inspection.md).

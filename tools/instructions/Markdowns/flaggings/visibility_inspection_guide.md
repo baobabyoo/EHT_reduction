@@ -1,6 +1,6 @@
 # Inspect calibrated visibilities across all scans and baselines
 
-For the shared scripts and commands to start a new observation under `data/`, see the [inspection code directory](../../ancillary_py_codes/README.md).
+For the shared scripts and commands to start a new observation under `data/`, see the [inspection code directory](../../../ancillary_py_codes/README.md).
 
 Use this procedure for one calibrated source at a time. The inspection unit is **one cross-correlation baseline in one original observing scan**. Review all units before deciding which problems can be attributed to an antenna. Use the original **M87_full_visibility_inspection.pdf** as the visual reference for symbols, axes, captions and diagnostic overlays. The revised report order below supersedes its all-baselines-first pagination.
 
@@ -57,10 +57,11 @@ Name the exact target MS for each command group. Verify `field`, station names, 
 
 ## 6. Reuse the code and verify the report
 
-The [preview renderer](visibility_preview.py) handles one baseline and scan. The [diagnostic spectrum reader](diagnostic_spectrum.py) recovers channel markers. The [review settings](NN_PV_scan2_review.json) illustrate how to record boundaries, tick anchors, annotations, and commands. To reproduce the approved case from this folder with Python, NumPy, Astropy, and Matplotlib:
+The [preview renderer](../../../ancillary_py_codes/visibility/visibility_preview.py) handles one baseline and scan. The [diagnostic spectrum reader](../../../ancillary_py_codes/visibility/diagnostic_spectrum.py) recovers channel markers. The [review settings](../../../ancillary_py_codes/visibility/NN_PV_scan2_review.json) illustrate how to record boundaries, tick anchors, annotations, and commands. To reproduce the approved case from the observation’s inspection directory with Python, NumPy, Astropy, and Matplotlib:
 
 ```sh
-python3 visibility_preview.py ../M87_calibrated.uvf NN_PV_scan2_review.json /tmp/M87_visibility_check.pdf
+scripts="$(git rev-parse --show-toplevel)/tools/ancillary_py_codes/visibility"
+python3 "$scripts/visibility_preview.py" ../M87_calibrated.uvf "$scripts/NN_PV_scan2_review.json" /tmp/M87_visibility_check.pdf
 ```
 
 For a full run, use a batch driver that indexes the visibility records once, reuses the averaging and plotting functions, and records each candidate before assigning flags across baselines. Read each diagnostic page’s own scale and legend. Generate new settings and findings for every selection. Write the full report to a separate file in `inspection/` so the approved preview stays available for comparison.
@@ -69,22 +70,23 @@ Before delivery, reconcile every scan and baseline against the inventory. Check 
 
 ## 7. Run the updated M87 pipeline
 
-The full report is [M87_full_visibility_inspection.pdf](M87_full_visibility_inspection.pdf). Run these commands in its folder. The UVFITS and diagnostic readers use Python with Astropy and NumPy. Matplotlib produces the plot sheets. The last two scripts use ReportLab, pypdf, pypdfium2, NumPy and Pillow. On this Mac those document libraries are in the bundled Codex Python runtime. Use the interpreter containing the dependencies for each command.
+The full report is [M87_full_visibility_inspection.pdf](../../examples/M87_full_visibility_inspection.pdf). Run these commands in the observation’s inspection directory. The UVFITS and diagnostic readers use Python with Astropy and NumPy. Matplotlib produces the plot sheets. The last two scripts use ReportLab, pypdf, pypdfium2, NumPy and Pillow. On this Mac those document libraries are in the bundled Codex Python runtime. Use the interpreter containing the dependencies for each command.
 
 ```sh
+scripts="$(git rev-parse --show-toplevel)/tools/ancillary_py_codes/visibility"
 diag=../diagnostics_2026-09-16_15-00-11
-python3 index_visibility.py ../M87_calibrated.uvf "$diag/list.obs" M87_visibility_coverage.csv
-python3 collect_visibility_samples.py ../M87_calibrated.uvf M87_visibility_coverage.csv M87_checkpoints/uv
-python3 collect_channel_spectra.py ../M87_calibrated.uvf "$diag/PLOTS_VISIBILITIES" "$diag/list.obs" M87_checkpoints/channels
-python3 assess_visibilities.py M87_checkpoints M87_visibility_coverage.csv
-python3 plan_visibility_flags.py
-python3 full_polarization.py
-python3 render_visibility_scans.py M87_checkpoints M87_visibility_coverage.csv
-python3 assemble_visibility_report.py --model "ACTUAL MODEL FOR THIS RUN" --output M87_revised_visibility_inspection.pdf
-python3 verify_visibility_report.py M87_revised_visibility_inspection.pdf /tmp/m87_report_review
+python3 "$scripts/index_visibility.py" ../M87_calibrated.uvf "$diag/list.obs" M87_visibility_coverage.csv
+python3 "$scripts/collect_visibility_samples.py" ../M87_calibrated.uvf M87_visibility_coverage.csv M87_checkpoints/uv
+python3 "$scripts/collect_channel_spectra.py" ../M87_calibrated.uvf "$diag/PLOTS_VISIBILITIES" "$diag/list.obs" M87_checkpoints/channels
+python3 "$scripts/assess_visibilities.py" M87_checkpoints M87_visibility_coverage.csv
+python3 "$scripts/plan_visibility_flags.py"
+python3 "$scripts/full_polarization.py"
+python3 "$scripts/render_visibility_scans.py" M87_checkpoints M87_visibility_coverage.csv
+python3 "$scripts/assemble_visibility_report.py" --model "ACTUAL MODEL FOR THIS RUN" --output M87_revised_visibility_inspection.pdf
+python3 "$scripts/verify_visibility_report.py" M87_revised_visibility_inspection.pdf /tmp/m87_report_review
 ```
 
-The plan, individual findings, per-scan data arrays, source-page inventory, validation results and plot sheets are in `M87_checkpoints/`. To repeat the CASA verification, create a fresh disposable directory, import the complete M87 UVFITS there as `M87_calibrated.ms` using CASA `importuvfits` with `antnamescheme='old'`, and create an empty `.disposable_flag_test` file in that directory. With that directory as the working directory, run [verify_export_flags.py](verify_export_flags.py) using CASA Python and the absolute paths to `M87_checkpoints/flag_plan.json` and `M87_checkpoints/export_flag_audit.json` as its two arguments. It flags only the disposable import and compares the entire FLAG column after each call. The assembler checks that the saved audit matches all current export selections.
+The plan, individual findings, per-scan data arrays, source-page inventory, validation results and plot sheets are in `M87_checkpoints/`. To repeat the CASA verification, create a fresh disposable directory, import the complete M87 UVFITS there as `M87_calibrated.ms` using CASA `importuvfits` with `antnamescheme='old'`, and create an empty `.disposable_flag_test` file in that directory. With that directory as the working directory, run [verify_export_flags.py](../../../ancillary_py_codes/visibility/verify_export_flags.py) using CASA Python and the absolute paths to `M87_checkpoints/flag_plan.json` and `M87_checkpoints/export_flag_audit.json` as its two arguments. It flags only the disposable import and compares the entire FLAG column after each call. The assembler checks that the saved audit matches all current export selections.
 
 The reviewed time intervals, summary prose and decisions about SPW 28 in the flag planner and report assembler are specific to this observation. For a different observation, replace those decisions with its own cross-baseline evidence, calibrate its diagnostic axes, confirm its dates and integration intervals, and record the actual model. Keep each dataset’s checkpoints in its own directory. If the inputs or the review decisions change, regenerate affected plot sheets and repeat the CASA checks before delivery.
 
@@ -96,7 +98,7 @@ Translate each missing correlation into the receptor at each ordered endpoint. U
 
 If the export quality flags are also used, evaluate completeness again after those flags. The separate conditional list selects the complementary hands of each quality flag in its exact MS selection. Apply a complementary call only when applying its corresponding quality flag. On a different or edited MS, recompute the mask. The unaveraged channelized MS needs its own validity check per channel and integration; its scan-level diagnostic cannot supply those weights.
 
-Use [full_polarization.py](full_polarization.py) to generate the new plans before assembly. Use [verify_full_polarization.py](verify_full_polarization.py) with CASA Python in each of two disposable working directories containing an imported MS named `M87_calibrated.ms` and a `.disposable_flag_test` marker. Pass the absolute path to the generated `full_pol_plan.json`, followed by the output audit path and mode. Use `full_pol_fresh.json fresh` for a pristine import. Use `full_pol_quality.json after-quality` on a second import after the 23 verified export quality flags. Save both audits in `M87_checkpoints/`. Run these audits before the assembler in step 7. Historical quality screens use the original half-open scan intervals so the previously reviewed commands remain reproducible. The updated plots and completeness mask use the inclusive endpoint tolerance. For each test, compare every output FLAG cell with the independent expected mask: each initially partial row must become fully flagged, each initially complete row must retain all four hands, and each empty row must remain empty. Record the incremental flag count and any mismatches before assembling the PDF.
+Use [full_polarization.py](../../../ancillary_py_codes/visibility/full_polarization.py) to generate the new plans before assembly. Use [verify_full_polarization.py](../../../ancillary_py_codes/visibility/verify_full_polarization.py) with CASA Python in each of two disposable working directories containing an imported MS named `M87_calibrated.ms` and a `.disposable_flag_test` marker. Pass the absolute path to the generated `full_pol_plan.json`, followed by the output audit path and mode. Use `full_pol_fresh.json fresh` for a pristine import. Use `full_pol_quality.json after-quality` on a second import after the 23 verified export quality flags. Save both audits in `M87_checkpoints/`. Run these audits before the assembler in step 7. Historical quality screens use the original half-open scan intervals so the previously reviewed commands remain reproducible. The updated plots and completeness mask use the inclusive endpoint tolerance. For each test, compare every output FLAG cell with the independent expected mask: each initially partial row must become fully flagged, each initially complete row must retain all four hands, and each empty row must remain empty. Record the incremental flag count and any mismatches before assembling the PDF.
 
 ## 9. M87 provenance and the equivalent files to find in another observation
 

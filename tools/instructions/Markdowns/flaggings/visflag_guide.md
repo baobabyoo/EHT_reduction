@@ -22,7 +22,7 @@ Collect all flag commands into an ASCII file ending with _Codexflag_commands.py.
 
 ## Step 2. Human flagging
 
-A human analyzer runs both passes. Start in the observation directory containing the visibility file and the Step 1 ASCII proposals, with the [widget environment](../../ancillary_py_codes/visflag_widget/README.md) active. In the same shell, set the target basename to match the proposal filename. This example uses M87 and assumes the observation is inside the project checkout.
+A human analyzer runs both passes. Start in the observation directory containing the visibility file and the Step 1 ASCII proposals, with the [widget environment](../../../ancillary_py_codes/visflag_widget/README.md) active. In the same shell, set the target basename to match the proposal filename. This example uses M87 and assumes the observation is inside the project checkout.
 
 ```bash
 app="$(git rev-parse --show-toplevel)/tools/ancillary_py_codes/visflag_widget/app.py"
