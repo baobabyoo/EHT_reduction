@@ -4,13 +4,14 @@ Review CASA flagging proposals against the visibility data you open. The browser
 
 ## Run on this Mac
 
-From the checkout root, locate the shared widget and switch to the observation working directory. This example uses the local M87 reference dataset:
+From the checkout root, locate the shared widget and switch to the observation working directory. This example opens the sandbox M87 export with the archived visibility report. Use the same shell for the examples below.
 
 ```bash
 widget_dir="$PWD/tools/ancillary_py_codes/visflag_widget"
-cd data/rpicard/e26m17_example/e26m17_rpicard/e26m17-1-b3 || exit 1
+visibility_report="$PWD/tools/instructions/examples/M87_full_visibility_inspection.pdf"
+cd data/rpicard/e26m17_rpicard_sandbox/e26m17-1-b3 || exit 1
 python3 "$widget_dir/app.py" M87_calibrated.uvf \
-  --pdf inspection/M87_full_visibility_inspection.pdf \
+  --pdf "$visibility_report" \
   --output approved_M87_report.py
 ```
 
@@ -53,7 +54,7 @@ Add `--overwrite` to explicitly replace the chosen ASCII output and reset its co
 
 ```bash
 python3 "$widget_dir/app.py" M87_calibrated.uvf \
-  --pdf inspection/M87_full_visibility_inspection.pdf \
+  --pdf "$visibility_report" \
   --output pdf_review.py --overwrite
 ```
 
@@ -189,11 +190,11 @@ Use either `--pdf` or `--commands` (also `--ascii`). The default import opens on
 ```bash
 # Review both passband tables using the calibration report
 python3 "$widget_dir/app.py" calibration_tables/bpass_complx.t calibration_tables/bpass_scalar.t \
-  --pdf inspection/all_antennas_bandpass_summary.pdf --output reviewed_passbands.py
+  --pdf inspection/passband_Codexflag_summary.pdf --output reviewed_passbands.py
 
 # Review the single-band delay report
 python3 "$widget_dir/app.py" calibration_tables/ff_sb.t \
-  --pdf inspection/ff_sb_summary.pdf --output reviewed_delays.py
+  --pdf inspection/delay_Codexflag_summary.pdf --output reviewed_delays.py
 
 # Browse every antenna with the passband ASCII proposals available
 python3 "$widget_dir/app.py" calibration_tables/bpass_complx.t calibration_tables/bpass_scalar.t \
@@ -201,7 +202,7 @@ python3 "$widget_dir/app.py" calibration_tables/bpass_complx.t calibration_table
 
 # Browse every baseline and scan with visibility proposals available
 python3 "$widget_dir/app.py" M87_calibrated.uvf \
-  --pdf inspection/M87_full_visibility_inspection.pdf --examine --output examined_vis.py
+  --pdf "$visibility_report" --examine --output examined_vis.py
 ```
 
 **Command review** follows import order. A passband proposal opens its antenna, table and hand. A fringe proposal opens the antenna and a scan within its selection. The scan menu permits stepping through its scan range. The command keeps the entire range when approved. Passband phase plots can highlight channels selected by a modulus clip in the complex table. When only one passband table is open, the widget reviews commands for that table and reports the number omitted for the unloaded companion.

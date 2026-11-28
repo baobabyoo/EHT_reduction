@@ -2,7 +2,7 @@
 
 Use the [inspection PDF writing and layout guide](../inspection_pdf_style.md) for the opening survey, reader-facing language, typography, code blocks and rendered-page checks.
 
-Use this procedure during the calibration-correction branch of the [overall workflow](../flaggings/Overall_workflow.md). A request for advice authorizes inspection and a proposed change. Editing inputs, applying flags and executing tasks are separate decisions for the human analyzer.
+Use this procedure during the calibration-correction branch of the [overall workflow](../../../../Overall_workflow.md). A request for advice authorizes inspection and a proposed change. Editing inputs, applying flags and executing tasks are separate decisions for the human analyzer.
 
 
 ## When an inspection finding qualifies
@@ -66,7 +66,7 @@ Prefer working input edits or an existing supported invocation. Suggest a change
 
 ### Example: array-wide trial prompted by noisy AX complex passband phases
 
-If the eligibility conditions above are met and the human is considering an array-wide comparison, check that task 15 is `task_complex_bandpass` in the installed version. In the supplied `casaeht/bin/process_eht`, the first changed line below belongs to the polarization-swap branch and the second to the ordinary branch. Show this edit for a trial copy of the working driver:
+If the eligibility conditions above are met and the human is considering an array-wide comparison, check that task 15 is `task_complex_bandpass` in the installed version. In the supplied [training driver](../../../../rpicard_train/rPICARD/casaeht/bin/process_eht), the first changed line below belongs to the polarization-swap branch and the second to the ordinary branch. Show this edit for a trial copy of the working driver:
 
 ```diff
 -        picard -n $maxcores -prdfsmq b,c,7~15 >> picard.out

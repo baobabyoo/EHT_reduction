@@ -1,10 +1,10 @@
 # EHT reduction workspace
 
-This project keeps shared analysis tools alongside local observations. Open the project root in Codex so a new chat can find both. To share the workflow on GitHub, include this README, AGENTS.md, `tools/` and `Codex_skills/`. Each analyzer supplies their observation data locally.
+This project keeps shared analysis tools alongside local observations. Open the project root in Codex so a new chat can find both. To share the workflow on GitHub, include this README, `AGENTS.md`, `Overall_workflow.md`, `tools/` and `Codex_skills/`. Each analyzer supplies their observation data locally.
 
 ## Reduction workflow
 
-For each track and band, PolConvert converts the polarization basis of the correlated data, then rPICARD calibrates the visibilities. Codex assesses the products and proposes flags. A human reviews the conversion, calibration, and visibility selections. Before imaging, apply and verify any agreed visibility flags on the intended measurement set and record the dataset used. The final QA report combines the stage findings with the accepted image, restoring beam, and residual RMS. See the [full reduction workflow](tools/instructions/Markdowns/flaggings/Overall_workflow.md).
+For each track and band, PolConvert converts the polarization basis of the correlated data, then rPICARD calibrates the visibilities. Codex assesses the products and proposes flags. A human reviews the conversion, calibration, and visibility selections. Before imaging, apply and verify any agreed visibility flags on the intended measurement set and record the dataset used. The final QA report combines the stage findings with the accepted image, restoring beam, and residual RMS. See the [full reduction workflow](Overall_workflow.md).
 
 ![EHT reduction workflow from PolConvert through imaging and final QA, showing when to repeat conversion, calibration, or imaging.](tools/instructions/eht-reduction-workflow.png)
 
@@ -22,7 +22,7 @@ For each track and band, PolConvert converts the polarization basis of the corre
 | `tools/ancillary_py_codes/workflow_test/` | Historical M87 workflow-test drivers with observation-specific assumptions. |
 | `data/Polconv_2026/` | PolConvert materials for the 2026 observation. |
 | `data/rpicard/e26m17/b1/` through `b4/` | Local per-band working directories. |
-| `data/rpicard/e26m17_example/` | Reference reduction, separate workflow test and backup. The example observation is `e26m17_rpicard/e26m17-1-b3/` beneath this directory. |
+| `data/rpicard/e26m17_rpicard_sandbox/e26m17-1-b3/` | Local sandbox observation used in the inspection examples. |
 
 Keep observation inputs with their reduction run. Use its `inspection/` folder for checkpoints and the handoff. The current visibility workflow writes its proposal PDF and ASCII commands directly in the selected data directory. Treat example measurements and flag selections as specific to their observation.
 

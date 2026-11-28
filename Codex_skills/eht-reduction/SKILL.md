@@ -11,7 +11,7 @@ Inventory the actual input paths and record which file supplies each quantity, i
 
 ## Choose the procedure
 
-Unlinked flagging guide names below are relative to tools/instructions/Markdowns/flaggings/. Use the shared code index at tools/ancillary_py_codes/README.md. Use [Overall_workflow.md](../../tools/instructions/Markdowns/flaggings/Overall_workflow.md) for the rPICARD stage order. Write calibration proposals and checkpoints in the observation’s inspection directory and visibility proposals alongside the visibility data.
+Unlinked flagging guide names below are relative to tools/instructions/Markdowns/flaggings/. Use the shared code index at tools/ancillary_py_codes/README.md. Use [Overall_workflow.md](../../Overall_workflow.md) for the rPICARD stage order. Write calibration proposals and checkpoints in the observation’s inspection directory and visibility proposals alongside the visibility data.
 
 - **Inspection PDFs.** Read the [PDF writing and layout guide](../../tools/instructions/Markdowns/inspection_pdf_style.md) alongside the relevant product guide. Open with an array-wide survey of what was checked, including phase and amplitude for passbands or the delay distribution and phase coverage for delay. Present the measured trigger before any rerun recommendation. Render the pages and verify that the selectable commands retain their exact arguments.
 - **Pipeline inspection.** Start with picard.out and its matching diagnostics directory. Record the stage, affected data, evidence and consequence of unusual events. Use the project's CASA_rPICARD data inspection slides in tools/instructions/PDFs/ for its inspection sequence.

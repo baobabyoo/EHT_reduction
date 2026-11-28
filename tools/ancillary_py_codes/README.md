@@ -5,7 +5,7 @@ Start at the EHT_reduction project root. Observations live under `data/rpicard/`
 | Folder | Contents |
 |---|---|
 | `visibility/` | The 13 Python scripts from the reference observation’s inspection directory, plus its single-baseline JSON example. Use this folder for coverage indexing, sample extraction, diagnostic spectra, plotting and report verification. |
-| [visflag_widget/](visflag_widget/README.md) | Interactive delay, bandpass and visibility flag review. Launch the shared app from the observation directory, for example `python3 "$project/tools/ancillary_py_codes/visflag_widget/app.py" M87_calibrated.uvf`. |
+| [visflag_widget/](visflag_widget/README.md) | Interactive delay, bandpass and visibility flag review. Launch the shared app from the observation directory, for example `python3 "$(git rev-parse --show-toplevel)/tools/ancillary_py_codes/visflag_widget/app.py" M87_calibrated.uvf`. |
 | `workflow_test/` | The historical analysis, approval, reporting and verification drivers from the M87 workflow test. They assume that test’s files and working directory. |
 | `../instructions/Markdowns/flaggings/` | The visibility inspection guide and the separate delay and bandpass inspection guides. |
 
