@@ -1,5 +1,7 @@
 # Inspect calibrated visibilities across all scans and baselines
 
+Use the [inspection PDF writing and layout guide](../inspection_pdf_style.md) for the opening survey, reader-facing language, typography, code blocks and rendered-page checks.
+
 For the shared scripts and commands to start a new observation under `data/`, see the [inspection code directory](../../../ancillary_py_codes/README.md).
 
 Use this procedure for one calibrated source at a time. The inspection unit is **one cross-correlation baseline in one original observing scan**. Review all units before deciding which problems can be attributed to an antenna. Use the original **M87_full_visibility_inspection.pdf** as the visual reference for symbols, axes, captions and diagnostic overlays. The revised report order below supersedes its all-baselines-first pagination.
@@ -54,6 +56,10 @@ Open with the findings-first sequence specified below. Include input filenames, 
 List **formal, standalone CASA `flagdata(..., mode='manual', ...)` calls, one per justified selection, with no loop**. Present antenna-wide selections supported by multiple partners first. Follow with the remaining baseline-specific selections and remove redundant coverage. A station-wide hand selector can affect different feeds when that station switches position in the stored baseline order. Verify its effect across both orientations and split selections when needed.
 
 Name the exact target MS for each command group. Verify `field`, station names, correlation labels, SPW IDs, channel indices, and scan ID or UTC `timerange` in that target. A single original channel and an entire IF in an imported UVFITS MS are different selections. Restrict each proposed command to the time, frequency, and hands supported by the evidence. Test on a disposable copy when available, compare the changed flag cells with the intended mask, and identify any untested command. Keep the science inputs read-only during inspection.
+
+### Rerun proposals in this inspection PDF
+
+Use the [shared eligibility rules](../AI_advices/rpicard_rerun_advice.md#when-an-inspection-finding-qualifies) to decide whether to include a proposal. For each eligible finding, cite its evidence page in the opening findings, annotate the figure in this PDF, and present the proposal after the plots using the [shared proposal format](../AI_advices/rpicard_rerun_advice.md#present-the-proposal-in-the-inspection-pdf). In “What to inspect first,” point to the annotated evidence page. Show the affected baseline, scan, polarization and time or frequency range alongside a control. Label the spectral resolution and averaging used so the reader can tell whether the feature is resolved. Preserve the command-evidence and cleaned-coverage page order.
 
 ## 6. Reuse the code and verify the report
 

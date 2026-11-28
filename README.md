@@ -13,6 +13,7 @@ For each track and band, PolConvert converts the polarization basis of the corre
 | Path | Purpose |
 |---|---|
 | `Codex_skills/eht-reduction/SKILL.md` | Distributable Codex skill. It locates the guides and programs in the checkout. |
+| [Inspection PDF writing and layout](tools/instructions/Markdowns/inspection_pdf_style.md) | Opening findings, figure references, styled Bash, Diff and CASA blocks, and checks on the rendered report. |
 | `tools/instructions/Markdowns/AI_advices/` | [Evidence and exact input edits for human-reviewed rPICARD reruns](tools/instructions/Markdowns/AI_advices/rpicard_rerun_advice.md). |
 | `tools/instructions/Markdowns/flaggings/` | Procedures for delay, bandpass, visibility inspection and the staged visibility flag review. |
 | `tools/instructions/PDFs/`, `tools/instructions/examples/` | Workshop and inspection slides, and example calibration reports. |
@@ -50,8 +51,9 @@ ln -s ../../Codex_skills/eht-reduction .agents/skills/eht-reduction
 If the link already exists, check its destination with `ls -l .agents/skills/eht-reduction`. Open a fresh Codex chat in this checkout and invoke the skill by name. For example:
 
 ```text
-Use $eht-reduction on data/rpicard/e26m17_example/e26m17_rpicard/e26m17-1-b3.
-Read inspection/HANDOFF.md and summarize the next visibility review step.
+Use $eht-reduction on data/rpicard/e26m17_rpicard_sandbox/e26m17-1-b3.
+Produce separate delay and passband inspection summaries. For a reproducibility test,
+write them to a new directory under inspection/. Do not apply flags to the originals or run rPICARD.
 ```
 
 For another observation, give its actual directory and task, such as “Use $eht-reduction on data/rpicard/e26m17/b3 to inspect the delay table once it is available.” Install the Python or CASA dependencies for the selected task as described in the shared code or widget instructions. A skill installation supplies Codex instructions; numerical analysis uses those project tools.

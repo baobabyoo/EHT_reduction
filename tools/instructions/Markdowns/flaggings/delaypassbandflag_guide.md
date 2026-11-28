@@ -2,6 +2,8 @@
 
 Use this guide when reviewing rPICARD calibration solutions for one reduction run. Codex proposes flags. A human reviews them in the widget. Each exported CASA command must target the actual calibration table and the affected solution hand (R or L). Keep delay and passband reviews in separate files. The two passband tables may share one review file because each call names its target table.
 
+Read the [PDF writing and layout guide](../inspection_pdf_style.md) for both reports. Give each its own opening findings. In the delay report, describe how much phase can be shown after accounting for the stored delay and phase flags. In the passband report, cover both tables before discussing any proposed rerun.
+
 ## Step 1. Codex flagging
 
 1. **Identify the inputs.** From the requested observation directory, locate the active `calibration_tables/ff_sb.t`, `bpass_complx.t` and `bpass_scalar.t` (all under `calibration_tables/`). Open them read-only. Read antenna, field, stored scan number, SPW, channel frequencies and existing flags from each table. Verify the receptor and parameter mapping for this reduction. Record the input paths and CASA version.

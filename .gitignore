@@ -2,3 +2,4 @@
 __pycache__/
 *.pyc
 /rpicard_train/
+/data/rpicard/e26m17_rpicard_sandbox/

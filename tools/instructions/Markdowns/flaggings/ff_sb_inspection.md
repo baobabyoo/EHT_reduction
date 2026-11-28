@@ -1,5 +1,7 @@
 # Repeating the CASA single-band fringe-table inspection
 
+Use the [inspection PDF writing and layout guide](../inspection_pdf_style.md) for the opening survey, reader-facing language, typography, code blocks and rendered-page checks.
+
 Use the active reduction's `calibration_tables/ff_sb.t` and write the PDF into its `inspection/` directory. For e26m17-1-b3 the table is a CASA Fringe Jones calibration product. Record the track, table path, CASA version, analysis time with time zone and model identity in the PDF. For this analysis the recorded model was GPT-6.2 Astra High (model ID gpt-6.2-astra, reasoning effort high). On future runs check the analysis turn’s model and effort in the chat metadata before recording them. Keep the observing date separate from the analysis timestamp.
 
 ## Extract the active solutions
@@ -45,6 +47,10 @@ For each antenna/scan/hand, compare valid delays across SPWs with their median. 
 3. Follow with phase pages for the same antenna. Sort scan IDs numerically and split into groups of eight, arranged in four rows and two columns, reading across rows. Give each panel its scan ID, source, and usable R/L counts. Retain a labeled empty panel if a scan has no usable phase for the antenna. Leave any unused panels at the end blank. For each row, independently pair the phase and delay slots for each hand (R: 0 and 1; L: 4 and 5). Plot the wrapped phase only if both values are finite and both stored flags are clear on that row. Keep eligible points from the other hand and other SPWs. Annotate omissions by hand, parameter and compact SPW ranges, for example “R delay unavailable · SPW 17, 30–31”. If neither hand has eligible points, keep the labeled empty panel. An outlier identified only by the analytical delay screen does not suppress its phase. Use a common frequency range and common phase limits with ticks at −180, −90, 0, 90 and 180 degrees.
 4. Use blue open circles (#0072B2) for R and orange plus signs (#D55E00) for L throughout. Identify frequency in GHz, delay in ns and phase in degrees. Keep each page exclusive to one antenna.
 5. After all antenna pages, list the outliers, then print executable CASA flagging commands for exactly those entries. End with notes on sparse scans, phase wrapping, interpolation and reference behavior. Distinguish repeat table values from independent detections.
+
+### Rerun proposals in this inspection PDF
+
+Use the [shared eligibility rules](../AI_advices/rpicard_rerun_advice.md#when-an-inspection-finding-qualifies) to decide whether to include a proposal. For each eligible finding, cite its evidence page in the opening findings, annotate the figure in this PDF, and present the proposal after the plots using the [shared proposal format](../AI_advices/rpicard_rerun_advice.md#present-the-proposal-in-the-inspection-pdf). In the delay figure, identify the antenna, scan, hand and SPWs. Show the signed delay excursion in ns alongside the relevant comparison from another SPW or scan; identify the phase coverage if it affects the interpretation.
 
 ## Formal CASA flagdata commands
 

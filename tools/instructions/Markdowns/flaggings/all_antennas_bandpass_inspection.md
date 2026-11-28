@@ -1,5 +1,7 @@
 # Inspect rPICARD complex and scalar passbands
 
+Use the [inspection PDF writing and layout guide](../inspection_pdf_style.md) for the opening survey, reader-facing language, typography, code blocks and rendered-page checks.
+
 This procedure produced the seven-antenna inspection (AA, AX, GL, KT, MG, NN, PV) for e26m17-1-b3. It works from the active CASA tables in the reduction’s calibration_tables directory. Write a new PDF and this guide in inspection/. Record the observation, reduction, table versions or paths, antenna list, CASA version and analysis time. For this report the model was GPT-6.2 Astra High.
 
 ## Read the solutions
@@ -33,6 +35,18 @@ On the first page, show the exact input table paths relative to the reduction di
 Mark noteworthy excursions directly on the affected antenna and hand panels. Use native CHAN_FREQ values to place a labeled vertical guide at an isolated channel or a shaded band over a cluster. Give the SPW and channel or channel range. Keep the guides at identical frequencies on the before and after pages. A guide denotes the location of the finding; only the verified candidate mask excludes a value. Describe zero or nearly zero phase in the closing notes without highlighting the flat trace. Mark genuine excursions within such spectra.
 
 For this reduction, highlight AA R in SPW 28 channels 86–89; AX in both hands at SPW 6 channel 115 and SPW 28 channel 97; the KT R cluster in SPWs 15–16, MG R in SPWs 14–16, and both stations’ L clusters in SPW 2. On scalar panels mark the 40 SPW/channel locations shared by all seven stations in both hands with short ticks along the lower edge. Label representative common dips, the deep edge channel, and NN’s extended SPW 28 drop at channels 97–115. Derive the selections afresh for other observations. Render the final PDF and check the labels against the native frequency coordinates and the first-page table names.
+
+### Rerun proposals in this inspection PDF
+
+Use the [shared eligibility rules](../AI_advices/rpicard_rerun_advice.md#when-an-inspection-finding-qualifies) to decide whether to include a proposal. For each eligible finding, cite its evidence page in the opening findings, annotate the figure in this PDF, and place Verification and Scope and the complete step-by-step trial guide before the first plot. Open the recommendation with the measured condition that triggered it and use the [shared proposal format](../AI_advices/rpicard_rerun_advice.md#present-the-proposal-in-the-inspection-pdf). Use the relevant antenna and hand panel from the original solution pages. Label the table, SPW and channel range and show the phase or gain feature alongside neighboring channels or an independent solution. Identify repeated copies of a spectrum in the caption.
+
+### Check whether a phase solution costs calibrator signal
+
+When a table raises the noisy-phase concern in the rerun advice guide, check the available delivered calibrator data before deciding whether a trial qualifies. Identify the configured bandpass calibrators in the reference calibrator pass. Choose suspect hand/SPW combinations from the solution table first. Use native-channel MS data where available. If UVFITS has one channel per SPW, look for matching scan-averaged channel spectra in the run's PLOTS_VISIBILITIES directory. The [channel-spectrum reader](../../../ancillary_py_codes/visibility/collect_channel_spectra.py) checks the frequency grid and labels in supported rPICARD PostScript diagnostics. Record the actual resolution and averaging and whether statistical weights are available.
+
+Compare affected baselines with baselines sharing the other station and excluding the suspect stations. Match source, scan, hand, SPW and usable channels. Report typical wrapped adjacent-channel step, coherent amplitude and fraction of amplitude retained across frequency. For channels with positive amplitudes, the latter is the modulus of the sum of complex visibilities divided by the sum of their moduli (with the same weights in both sums). Check more than one scan and calibrator where available. Report both the selected bands and the broader sample. Thermal noise, baseline sensitivity and source structure can affect these comparisons.
+
+For a phase-only table known to have been applied, a useful diagnostic is to reverse the stored phase on the delivered channels. Verify baseline orientation, hand, time/frequency mapping and the calibration convention first. Under the usual convention for baseline i–j, multiply the delivered complex visibility by the unit phasor of B_i times conjugate(B_j). Use identical valid inputs for the delivered and reversed measurements. This calculation holds later solutions and flag coverage fixed. Identify uncertainty about interpolation or provenance, include controls, and label the calculation as a prediction. If available products cannot distinguish a calibration consequence, report that limit. A recommended trial still needs the shared eligibility and host verification checks.
 
 ## Produce and test formal CASA commands
 
